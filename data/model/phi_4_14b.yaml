@@ -1,0 +1,11 @@
+model: microsoft/phi-4
+served_model_name: Phi 4
+host: localhost
+port: 8003
+gpu_memory_utilization: 0.3
+max_model_len: 1024
+max_logprobs: 200064
+middleware: router.CustomRouteMiddleware
+
+enable_prefix_caching: true
+enable-tokenizer-info-endpoint: true

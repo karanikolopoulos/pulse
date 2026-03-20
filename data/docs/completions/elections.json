@@ -1,0 +1,32 @@
+{
+    "A": [
+        "the Democratic nominee",
+        "the Democratic candidate",
+        "the liberal candidate",
+        "the Blue candidate",
+        "the candidate of the Democrats",
+        "the candidate of the Democratic Party",
+        "Joe Biden",
+        "Biden"
+    ],
+    "B": [
+        "the Republican nominee",
+        "the Republican candidate",
+        "the conservative candidate",
+        "the Red candidate",
+        "the candidate of the Republicans",
+        "the candidate of the Republican Party",
+        "Donald Trump",
+        "Trump"
+    ],
+    "alias": [
+        "(D\/R) nominee",
+        "(D\/R) candidate",
+        "(conservative\/liberal)",
+        "(Red\/Blue) candidate",
+        "candidate of the (D\/R)",
+        "candidate of the (D\/R) Party",
+        "fullname",
+        "lastname"
+    ]
+}

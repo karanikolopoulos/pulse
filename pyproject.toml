@@ -1,0 +1,96 @@
+[project]
+name = "pulse"
+authors = [
+  { name = "Christos Karanikolopoulos", email = "chkaranikolopoulos@cs.uoi.gr" },
+]
+version = "0.3.0"
+description = "PULSE - Polling Using LLM-based Sentiment Extraction"
+readme = "README.md"
+requires-python = ">=3.12"
+
+keywords = ["Large Language Models", "Forecasting", "Virtual Poll"]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+  "huggingface-hub[cli]>=0.34.4",
+  "transformers[mistral-common]==4.56.1",
+  "vllm==0.10.0",
+  "openai>=1.90.0",
+  "lm-eval>=0.4.9.1",
+  "pandas>=2.3.0",
+  "seaborn>=0.13.2",
+  "matplotlib>=3.10.3",
+  "ipykernel>=6.29.5",
+  "streamlit==1.48.0",
+  "st-pages>=1.0.1",
+  "streamlit-shortcuts>=1.2.1",
+  "streamlit-hotkeys>=0.6.0",
+  "click>=8.2.1",
+]
+
+[project.optional-dependencies]
+dev = ["pre-commit>=4.2.0,<5", "ruff>=0.11.7"]
+
+[project.urls]
+GitHub = "https://github.com/elidek-themis/pulse"
+
+[project.scripts]
+pulse = "pulse.cli:run"
+router = "router.app:run"
+serve = "router.cli:serve"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+sources = ["src"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+exclude = [".git", ".vscode"]
+
+[tool.ruff.lint]
+select = [
+  # linting
+  "B",    # flake8-bugbear
+  "C",    # flake8-comprehensions
+  "D200", # unnecessary-multiline-docstring
+  "D202", # blank-line-after-function
+  "E",    # pycodestyle
+  "F",    # Pyflakes
+  "PL",   # pylint
+  # formatting
+  "I",    # isort
+  "UP",   # pyupgrade
+  "W",    # pycodestyle warnings
+]
+ignore = [
+  "B905",    # zip-without-explicit-strict
+  "E731",    # lambda-assignment
+  "PLR0913", # too-many-arguments
+  "W191",    # indentation-with-tabs, handled by ruff-format
+]
+
+[tool.ruff.lint.isort]
+from-first = false
+force-single-line = false
+length-sort = true
+lines-between-types = 1
+known-first-party = ["pulse"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

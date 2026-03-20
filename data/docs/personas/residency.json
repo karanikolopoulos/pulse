@@ -1,0 +1,257 @@
+[
+  {
+    "state": "Alabama",
+    "B pct": 64.6,
+    "A pct": 34.1
+  },
+  {
+    "state": "Alaska",
+    "B pct": 54.5,
+    "A pct": 41.4
+  },
+  {
+    "state": "Arizona",
+    "B pct": 52.2,
+    "A pct": 46.7
+  },
+  {
+    "state": "Arkansas",
+    "B pct": 64.2,
+    "A pct": 33.6
+  },
+  {
+    "state": "California",
+    "B pct": 38.3,
+    "A pct": 58.5
+  },
+  {
+    "state": "Colorado",
+    "B pct": 43.2,
+    "A pct": 54.2
+  },
+  {
+    "state": "Connecticut",
+    "B pct": 41.9,
+    "A pct": 56.4
+  },
+  {
+    "state": "Delaware",
+    "B pct": 41.9,
+    "A pct": 56.6
+  },
+  {
+    "state": "District of Columbia",
+    "B pct": 6.5,
+    "A pct": 90.3
+  },
+  {
+    "state": "Florida",
+    "B pct": 56.1,
+    "A pct": 43.0
+  },
+  {
+    "state": "Georgia",
+    "B pct": 50.7,
+    "A pct": 48.5
+  },
+  {
+    "state": "Hawaii",
+    "B pct": 37.1,
+    "A pct": 59.9
+  },
+  {
+    "state": "Idaho",
+    "B pct": 66.9,
+    "A pct": 30.4
+  },
+  {
+    "state": "Illinois",
+    "B pct": 43.8,
+    "A pct": 54.8
+  },
+  {
+    "state": "Indiana",
+    "B pct": 58.6,
+    "A pct": 39.6
+  },
+  {
+    "state": "Iowa",
+    "B pct": 55.7,
+    "A pct": 42.5
+  },
+  {
+    "state": "Kansas",
+    "B pct": 57.2,
+    "A pct": 41.0
+  },
+  {
+    "state": "Kentucky",
+    "B pct": 64.5,
+    "A pct": 33.9
+  },
+  {
+    "state": "Louisiana",
+    "B pct": 60.2,
+    "A pct": 38.2
+  },
+  {
+    "state": "Maine",
+    "B pct": 45.5,
+    "A pct": 52.4
+  },
+  {
+    "state": "Maryland",
+    "B pct": 34.5,
+    "A pct": 62.2
+  },
+  {
+    "state": "Massachusetts",
+    "B pct": 36.0,
+    "A pct": 61.2
+  },
+  {
+    "state": "Michigan",
+    "B pct": 49.7,
+    "A pct": 48.3
+  },
+  {
+    "state": "Minnesota",
+    "B pct": 46.7,
+    "A pct": 50.9
+  },
+  {
+    "state": "Mississippi",
+    "B pct": 61.6,
+    "A pct": 37.3
+  },
+  {
+    "state": "Missouri",
+    "B pct": 58.4,
+    "A pct": 40.0
+  },
+  {
+    "state": "Montana",
+    "B pct": 58.4,
+    "A pct": 38.5
+  },
+  {
+    "state": "Nebraska",
+    "B pct": 59.6,
+    "A pct": 39.1
+  },
+  {
+    "state": "Nevada",
+    "B pct": 50.6,
+    "A pct": 47.5
+  },
+  {
+    "state": "New Hampshire",
+    "B pct": 47.9,
+    "A pct": 50.7
+  },
+  {
+    "state": "New Jersey",
+    "B pct": 46.1,
+    "A pct": 52.0
+  },
+  {
+    "state": "New Mexico",
+    "B pct": 45.9,
+    "A pct": 51.9
+  },
+  {
+    "state": "New York",
+    "B pct": 43.2,
+    "A pct": 54.7
+  },
+  {
+    "state": "North Carolina",
+    "B pct": 50.9,
+    "A pct": 47.7
+  },
+  {
+    "state": "North Dakota",
+    "B pct": 67.0,
+    "A pct": 30.5
+  },
+  {
+    "state": "Ohio",
+    "B pct": 55.2,
+    "A pct": 43.9
+  },
+  {
+    "state": "Oklahoma",
+    "B pct": 66.2,
+    "A pct": 31.9
+  },
+  {
+    "state": "Oregon",
+    "B pct": 41.0,
+    "A pct": 55.3
+  },
+  {
+    "state": "Pennsylvania",
+    "B pct": 50.4,
+    "A pct": 48.7
+  },
+  {
+    "state": "Rhode Island",
+    "B pct": 41.8,
+    "A pct": 55.5
+  },
+  {
+    "state": "South Carolina",
+    "B pct": 58.2,
+    "A pct": 40.4
+  },
+  {
+    "state": "South Dakota",
+    "B pct": 63.4,
+    "A pct": 34.2
+  },
+  {
+    "state": "Tennessee",
+    "B pct": 64.2,
+    "A pct": 34.5
+  },
+  {
+    "state": "Texas",
+    "B pct": 56.2,
+    "A pct": 42.4
+  },
+  {
+    "state": "Utah",
+    "B pct": 59.4,
+    "A pct": 37.8
+  },
+  {
+    "state": "Vermont",
+    "B pct": 32.0,
+    "A pct": 63.2
+  },
+  {
+    "state": "Virginia",
+    "B pct": 46.1,
+    "A pct": 51.8
+  },
+  {
+    "state": "Washington",
+    "B pct": 39.0,
+    "A pct": 57.2
+  },
+  {
+    "state": "West Virginia",
+    "B pct": 70.0,
+    "A pct": 28.1
+  },
+  {
+    "state": "Wisconsin",
+    "B pct": 49.6,
+    "A pct": 48.7
+  },
+  {
+    "state": "Wyoming",
+    "B pct": 71.6,
+    "A pct": 25.8
+  }
+]
