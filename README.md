@@ -4,34 +4,15 @@ Available at [elidek-themis-pulse.hf.space](https://elidek-themis-pulse.hf.space
 
 ![](assets/referendum.png)
 
-PULSE is build with:
-* [vLLM](https://github.com/vllm-project/vllm)
-* [lm-eval](https://github.com/EleutherAI/lm-evaluation-harness)
-* [Streamlit](https://github.com/streamlit/streamlit)
-
-All dependencies, [pyproject.toml](pyproject.toml)
+PULSE is built with [vLLM](https://github.com/vllm-project/vllm), [lm-eval](https://github.com/EleutherAI/lm-evaluation-harness) and [Streamlit](https://github.com/streamlit/streamlit).
 
 ```bash
-# install dependencies
+# install
 uv sync
 
-# activate venv
-source .venv/bin/activate
-```
+# serve a model (separate environment with vLLM installed)
+vllm serve --config data/model/llama_3_1_8b_it.yaml
 
-Use the router package to serve multiple models on a single host. \
-vLLM [configuration files](data/model/) are provided for reproducibility.
-```bash
-# i.e. serve on http://localhost:8000 and discover models in 8001-8010
-router --host localhost --port 8000 --vllm-port-start 8001 --vllm-port-end 8010
-serve data/models/llama_3_1_8b_it.yaml --port 8001
-serve data/models/gemma_2_27b_it.yaml --port 8002
-serve data/models/mistral_7b_v03.yaml --port 8003
-```
-
-Run PULSE \
-The Streamlit web interface will automatically launch at: [http://localhost:8501](http://localhost:8501)
-
-```bash
-pulse
+# run PULSE at http://localhost:8501, then connect to http://localhost:8000
+uv run pulse
 ```

@@ -1,6 +1,9 @@
 from pathlib import Path
 
-ROOT = Path(__file__).parent.parent.parent.parent
+PACKAGE = Path(__file__).resolve().parent.parent
+ROOT = PACKAGE.parent
+
+STATIC = PACKAGE / "static"
 
 DATA = ROOT / "data"
 TASKS = DATA / "tasks"

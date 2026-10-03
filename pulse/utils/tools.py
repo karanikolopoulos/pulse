@@ -7,6 +7,8 @@ import matplotlib.font_manager as fm
 
 from pandas.io.formats.style import Styler
 
+from pulse.utils.paths import STATIC
+
 
 class Placeholder(StrEnum):
     persona = "You are a citizen of the U.S."
@@ -80,8 +82,6 @@ def apply_html(styler: Styler, cell_text_color: str = "white") -> Styler:
     )
 
 
-def register_fonts(font_dir: str = "src/pulse/static") -> None:
-    font_path = Path(font_dir)
-
-    for font in font_path.rglob("*.ttf"):
+def register_fonts(font_dir: Path = STATIC) -> None:
+    for font in font_dir.rglob("*.ttf"):
         fm.fontManager.addfont(font)

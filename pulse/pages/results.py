@@ -153,7 +153,7 @@ def lineplot_section(diff: pd.DataFrame, docs: pd.DataFrame) -> None:
         id_vars = ["Target Group", "mean"]
 
     diff["mean"] = diff["mean"].map(lambda x: "A" if x > 0 else "B")
-    diff = diff.drop("SE", axis=1).reset_index().melt(id_vars=id_vars)
+    diff = diff.drop("SE", axis=1).rename_axis("Target Group").reset_index().melt(id_vars=id_vars)
 
     fig = lineplot(
         diff=diff,
