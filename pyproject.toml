@@ -21,9 +21,8 @@ classifiers = [
 dependencies = [
   "huggingface-hub[cli]>=0.34.4",
   "transformers[mistral-common]==4.56.1",
-  "vllm==0.10.0",
   "openai>=1.90.0",
-  "lm-eval>=0.4.9.1",
+  "lm-eval[api]>=0.4.13",
   "pandas>=2.3.0",
   "seaborn>=0.13.2",
   "matplotlib>=3.10.3",
@@ -43,8 +42,6 @@ GitHub = "https://github.com/elidek-themis/pulse"
 
 [project.scripts]
 pulse = "pulse.cli:run"
-router = "router.app:run"
-serve = "router.cli:serve"
 
 [build-system]
 requires = ["hatchling"]

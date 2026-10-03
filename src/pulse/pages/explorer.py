@@ -63,7 +63,7 @@ def prompt_container():
             label=f"Num. of tokens (max: {max_logprobs})",
             min_value=5,
             max_value=max_logprobs,
-            value=128,
+            value=min(128, max_logprobs),
             step=1,
         )
 

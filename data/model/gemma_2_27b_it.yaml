@@ -5,7 +5,6 @@ port: 8002
 gpu_memory_utilization: 0.5
 max_model_len: 1024
 max_logprobs: 256000
-middleware: router.CustomRouteMiddleware
 
 enable_prefix_caching: true
 enable-tokenizer-info-endpoint: true

@@ -1,3 +1,5 @@
+import re
+
 from http import HTTPStatus
 from typing import Final
 from functools import cached_property
@@ -16,13 +18,20 @@ from pulse.connection.vllm_completions import VLLMCompletions
 
 _LOGGER: Final = logger.get_logger(__name__)
 
+DEFAULT_MAX_LOGPROBS: Final = 20  # vLLM's default --max-logprobs
+
+# larger than any vocabulary, so vLLM always rejects it and reports its limit
+_PROBE_LOGPROBS: Final = 10_000_000
+# e.g. "Requested sample logprobs of 10000000, which is greater than max allowed: 248320"
+_MAX_ALLOWED: Final = re.compile(r"max allowed: (\d+)")
+
 
 @dataclass(frozen=True)
 class VLLMInstance:
     base_url: str
     model_card: ModelCard
     token: str = field(default="EMPTY", compare=False, hash=False)
-    max_logprobs: int = 20
+    max_logprobs: int = DEFAULT_MAX_LOGPROBS
     seed: int = 2025
 
     @cached_property
@@ -53,10 +62,6 @@ class VLLMConnection:
     token: str | None = "EMPTY"
     seed: int = 2025
 
-    def __post_init__(self):
-        # health check
-        pass
-
     @property
     def headers(self) -> dict:
         return {"Authorization": f"Bearer {self.token}"} if self.token else {}
@@ -71,9 +76,7 @@ class VLLMConnection:
         data = resp.json().get("data", {})
         return tuple(ModelCard.from_dict(m) for m in data)
 
-    def get_vllm_client(self, model_card: ModelCard) -> VLLMInstance:
-        max_logprobs = self._get_max_logprobs(model_card=model_card)
-
+    def get_vllm_client(self, model_card: ModelCard, max_logprobs: int) -> VLLMInstance:
         return VLLMInstance(
             base_url=self.base_url,
             token=self.token,
@@ -82,24 +85,29 @@ class VLLMConnection:
             seed=self.seed,
         )
 
-    def _get_max_logprobs(self, model_card: ModelCard) -> int | None:
-        resp = self._get_model_config(payload=model_card.payload)
-        model_config = resp.json()
+    def resolve_max_logprobs(self, model_card: ModelCard) -> int | None:
+        """Reads the server's --max-logprobs from vLLM's validation error on an over-limit request.
 
-        return model_config.get("max_logprobs", 20)
-
-    def _get_model_config(self, payload: dict) -> requests.Response:
-        resp = requests.get(
-            f"{self.base_url}/model_config",
-            json=payload,
-            headers=self.headers,
-        )
-        if not resp.ok:
-            _LOGGER.warning(  # noqa: PLE1205
-                "/model_config endpoint not enabled,",
-                "serve with --middleware router.CustomRouteMiddleware",
+        vLLM resolves `--max-logprobs -1` to the vocabulary size before validating. Returns None if
+        the limit could not be read (e.g. not a vLLM server, or the error message changed).
+        """
+        payload = {**model_card.payload, "prompt": " ", "max_tokens": 1, "logprobs": _PROBE_LOGPROBS}
+        try:
+            resp = requests.post(
+                f"{self.base_url}/v1/completions",
+                json=payload,
+                headers=self.headers,
+                timeout=10,
             )
-        return resp
+            message = resp.json()["error"]["message"]
+        except (requests.RequestException, ValueError, KeyError, TypeError):
+            message = ""
+
+        if match := _MAX_ALLOWED.search(message):
+            return int(match.group(1))
+
+        _LOGGER.warning("Could not read max_logprobs for %s", model_card.id)
+        return None
 
     @staticmethod
     def is_alive(url: str) -> int:

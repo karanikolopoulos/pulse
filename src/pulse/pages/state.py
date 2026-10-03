@@ -12,6 +12,7 @@ from pulse.data.pulse_task import PulseConfig
 from pulse.data.repository import Repository
 from pulse.connection.ranker import Ranker
 from pulse.connection.vllm_connection import (
+    DEFAULT_MAX_LOGPROBS,
     ModelCard,
     HTTPStatus,
     VLLMInstance,
@@ -127,7 +128,13 @@ def get_models(conn: VLLMConnection) -> tuple[ModelCard]:
 def assign_model() -> None:
     vllm_conn: VLLMConnection = ss.vllm_conn
     selected_model: ModelCard = ss._selected_model
-    client: VLLMInstance = vllm_conn.get_vllm_client(model_card=selected_model)
+
+    max_logprobs = vllm_conn.resolve_max_logprobs(model_card=selected_model)
+    if max_logprobs is None:
+        max_logprobs = DEFAULT_MAX_LOGPROBS
+        st.toast(f"Could not read max_logprobs for '{selected_model}', using {DEFAULT_MAX_LOGPROBS}.")
+
+    client: VLLMInstance = vllm_conn.get_vllm_client(model_card=selected_model, max_logprobs=max_logprobs)
 
     ss.client = client
     ss.selected_model = selected_model
