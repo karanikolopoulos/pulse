@@ -3,10 +3,10 @@ from dataclasses import replace
 import pandas as pd
 import streamlit as st
 
+from pulse_ui.session import pulse, results_view
+from pulse.application import PollSummary
 from pulse_ui.utils.plot import lineplot
 from pulse_ui.utils.tools import Latex, styler
-from pulse.services.results import PollSummary
-from pulse_ui.pages.session import pulse, results_view
 
 
 def select(runs: pd.DataFrame) -> tuple:
@@ -42,7 +42,7 @@ def task_summary(results) -> None:
         }
     )
 
-    st.popover("All completions", use_container_width=True).dataframe(menu_df)
+    st.popover("All completions", width="stretch").dataframe(menu_df)
 
 
 def _escape_dollar(label):
@@ -131,7 +131,6 @@ def lineplot_section(summary: PollSummary) -> None:
         st.pyplot(fig)
 
 
-st.header("PULSE - Polling Using LLM-based Sentiment Extraction")
 runs = pd.DataFrame(
     [(r.task, r.model, r.metrics, r.docs, r.completions) for r in pulse().results()],
     columns=["task", "model", "metrics", "docs", "choices"],

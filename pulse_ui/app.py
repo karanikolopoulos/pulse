@@ -2,10 +2,9 @@ from pathlib import Path
 
 import streamlit as st
 
-from st_pages import get_nav_from_toml
-
-from pulse_ui.pages.state import load_css
+from pulse_ui.components import sidebar
 from pulse_ui.utils.login import hf_login
+from pulse_ui.utils.tools import load_css
 
 hf_login()
 
@@ -16,6 +15,17 @@ st.set_page_config(layout="wide")
 load_css(conf_path / "styles.css")
 load_css(conf_path / "logo.css")
 
-nav = get_nav_from_toml(path=conf_path / "pages_sections.toml")
-pg = st.navigation(pages=nav)
-pg.run()
+page = st.navigation(
+    {
+        "PULSE": [
+            st.Page("app_pages/referendum.py", title="Polling", icon=":material/how_to_vote:"),
+            st.Page("app_pages/results.py", title="Results", icon=":material/bar_chart:"),
+            st.Page("app_pages/explorer.py", title="Explorer", icon=":material/manage_search:"),
+        ]
+    }
+)
+st.header("PULSE - Polling Using LLM-based Sentiment Extraction")
+with st.sidebar:
+    sidebar.show()
+
+page.run()

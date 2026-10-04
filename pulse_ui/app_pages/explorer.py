@@ -2,17 +2,11 @@ import streamlit as st
 
 from streamlit.logger import get_logger
 
-from pulse_ui.pages.state import st_md, draft_poll, sidebar_connection
+from pulse_ui.session import form, pulse, explorer
 from pulse_ui.utils.tools import Placeholder as ph
-from pulse_ui.pages.session import form, pulse, explorer
-
-st.header("PULSE - Polling Using LLM-based Sentiment Extraction")
+from pulse_ui.components.poll_form import draft_poll
 
 logger = get_logger(__name__)
-
-
-with st.sidebar:
-    sidebar_connection()
 
 
 def prompt_container():
@@ -37,7 +31,7 @@ def prompt_container():
             **form.bind("answer"),
         )
         comp_col.text_input(
-            label="completion",
+            label="Completion",
             placeholder=ph.completion,
             key=explorer.key("completion"),
             help="Mind the leading whitespace!",
@@ -54,10 +48,11 @@ def prompt_container():
         )
 
         btn_col.form_submit_button(
-            label="Sample next token",  # 🕵️‍♂️
+            label="Sample next token",
+            icon=":material/play_arrow:",
             on_click=sample,
             args=(logprobs,),
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -79,14 +74,12 @@ if failure := pulse().check_connection():
     st.error(failure.msg)
     st.stop()
 
-st_md(text="Prompt", container=column)
+column.markdown("**Prompt**")
 with column:
     prompt_container()
 
-st_md("Next token", container=column)
+column.markdown("**Next token**")
 next_container = column.container(border=True, height=165)
 sample_df = explorer.sample_df
 if sample_df is not None:
     next_container.dataframe(sample_df, height=415)
-
-st.write("")

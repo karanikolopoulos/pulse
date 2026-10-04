@@ -30,7 +30,6 @@ dependencies = [
   "pyyaml>=6.0.3",
   "requests>=2.34.2",
   "seaborn>=0.13.2",
-  "st-pages>=1.0.1",
   "streamlit>=1.65.0",
   "streamlit-hotkeys>=0.6.0",
   "transformers>=5.18.0",
@@ -109,6 +108,9 @@ combine-as-imports = true
 quote-style = "double"
 indent-style = "space"
 
+[tool.pytest.ini_options]
+pythonpath = ["tests"]  # shared test helpers, e.g. `from fakes import FakeServer`
+
 [tool.importlinter]
 root_packages = ["pulse", "pulse_ui"]
 include_external_packages = true
@@ -117,21 +119,22 @@ include_external_packages = true
 name = "The core does not depend on the UI"
 type = "forbidden"
 source_modules = ["pulse"]
-forbidden_modules = ["pulse_ui", "streamlit", "st_pages", "streamlit_hotkeys"]
+forbidden_modules = ["pulse_ui", "streamlit", "streamlit_hotkeys"]
 
 [[tool.importlinter.contracts]]
 name = "Core layers depend inward"
 type = "layers"
 layers = [
   "pulse.bootstrap",
+  "pulse.application",
   "pulse.services | pulse.adapters",
   "pulse.ports",
   "pulse.domain",
 ]
 
 [[tool.importlinter.contracts]]
-name = "The UI uses the core through bootstrap, services and domain types, not adapters"
+name = "The UI uses the core only through bootstrap, the application API and domain types"
 type = "forbidden"
 source_modules = ["pulse_ui"]
-forbidden_modules = ["pulse.adapters"]
-allow_indirect_imports = true  # via bootstrap, the composition root
+forbidden_modules = ["pulse.services", "pulse.adapters", "pulse.ports"]
+allow_indirect_imports = true  # e.g. pulse.application -> pulse.services

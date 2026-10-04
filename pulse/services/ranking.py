@@ -9,6 +9,9 @@ from pulse.ports import LanguageModel
 from pulse.domain.types import Chat, Sequence
 from pulse.domain.scoring import elbow_rank, token_prefixes
 
+V_PCT = 0.2  # share of max_logprobs sampled at each position
+MIN_P = 0.99  # cumulative probability that defines the elbow
+
 
 @dataclass
 class Ranker:
@@ -19,8 +22,8 @@ class Ranker:
     group_a: list[str]
     group_b: list[str]
 
-    v_pct: float = 0.2  # share of max_logprobs sampled at each position
-    min_p: float = 0.99  # cumulative probability that defines the elbow
+    v_pct: float = V_PCT
+    min_p: float = MIN_P
 
     @property
     def completions(self) -> list[str]:

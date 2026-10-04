@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 
 from matplotlib.lines import Line2D
 
+from pulse.application import PollSummary
 from pulse_ui.utils.tools import Latex, register_fonts
-from pulse.services.results import PollSummary
 
 STAR = {
     "xdata": [0],

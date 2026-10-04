@@ -1,14 +1,13 @@
 """Composition root: the one place that decides which adapters PULSE runs on.
 
-Every front end calls `bootstrap()`: Streamlit once per browser session, a CLI once per command,
-tests with fakes in place of the defaults.
+Streamlit calls `bootstrap()` once per browser session; tests call it with fakes in place of the defaults.
 """
 
 from collections.abc import Callable
 
 from pulse.ports import Storage, ModelServer
+from pulse.application import Pulse
 from pulse.utils.paths import DATA
-from pulse.services.facade import Pulse
 from pulse.adapters.vllm.client import VLLMConnection
 from pulse.adapters.file_storage import FileStorage
 

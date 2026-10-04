@@ -15,8 +15,7 @@ import pandas as pd
 import streamlit as st
 
 from pulse.bootstrap import bootstrap
-from pulse.services.facade import Pulse
-from pulse.services.ranking import Ranker
+from pulse.application import Pulse, Ranker
 
 _PULSE = "pulse"
 

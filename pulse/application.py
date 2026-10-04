@@ -1,4 +1,4 @@
-"""Everything the UI can do with PULSE; pages only present it.
+"""The core's public API: everything a front end can do with PULSE; pages only present it.
 
 Each use case has a check, which returns the first failing guard for the UI to show, and an
 action, which runs the same check and raises `Blocked` if it fails.
@@ -21,9 +21,11 @@ from pulse.domain.guards import (
     first_error,
 )
 from pulse.services.polling import run_poll
-from pulse.services.ranking import Ranker
+from pulse.services.ranking import MIN_P, V_PCT, Ranker
 from pulse.services.results import PollSummary, summarize
 from pulse.services.explorer import next_token_table
+
+__all__ = ["Blocked", "PollSummary", "Pulse", "Ranker"]  # results the UI may hold
 
 
 class Blocked(Exception):
@@ -129,7 +131,7 @@ class Pulse:
     def check_ranking(self, poll: PulseConfig) -> Clause | None:
         return first_error(self.connection, RankingGuards(poll))
 
-    def ranker(self, poll: PulseConfig, v_pct: float, min_p: float) -> Ranker:
+    def ranker(self, poll: PulseConfig, v_pct: float = V_PCT, min_p: float = MIN_P) -> Ranker:
         self._require(self.check_ranking(poll))
         completions = self._storage.get_table(kind="completions", name=poll.completions).to_dict(orient="list")
         return Ranker(

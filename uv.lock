@@ -2473,7 +2473,6 @@ dependencies = [
     { name = "pyyaml" },
     { name = "requests" },
     { name = "seaborn" },
-    { name = "st-pages" },
     { name = "streamlit" },
     { name = "streamlit-hotkeys" },
     { name = "transformers" },
@@ -2502,7 +2501,6 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "requests", specifier = ">=2.34.2" },
     { name = "seaborn", specifier = ">=0.13.2" },
-    { name = "st-pages", specifier = ">=1.0.1" },
     { name = "streamlit", specifier = ">=1.65.0" },
     { name = "streamlit-hotkeys", specifier = ">=0.6.0" },
     { name = "transformers", specifier = ">=5.18.0" },
@@ -3273,18 +3271,6 @@ name = "sqlitedict"
 version = "2.1.0"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/12/9a/7620d1e9dcb02839ed6d4b14064e609cdd7a8ae1e47289aa0456796dd9ca/sqlitedict-2.1.0.tar.gz", hash = "sha256:03d9cfb96d602996f1d4c2db2856f1224b96a9c431bdd16e78032a72940f9e8c", size = 21846, upload-time = "2022-12-03T13:39:13.102Z" }
-
-[[package]]
-name = "st-pages"
-version = "1.0.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "streamlit" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/83/60/f9516698fc3952bba1d1b6c1cb0795aa82dac12473f5fb678066532268e0/st_pages-1.0.1.tar.gz", hash = "sha256:2641cfbff1c768ff146858ed742d282b30a3a4c3e4f7717898705bbaee717736", size = 21341, upload-time = "2024-08-08T19:58:58.378Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a7/04/77c5f0cdc21deb6eadd77bdbf88157632178865e71adffed728fa9e5b48b/st_pages-1.0.1-py3-none-any.whl", hash = "sha256:9098fb4d96bc1dfa56cc2c56ef6fe44e607c69261ff4bceee1f6e9c1e0c2acb4", size = 20099, upload-time = "2024-08-08T19:58:56.991Z" },
-]
 
 [[package]]
 name = "stack-data"

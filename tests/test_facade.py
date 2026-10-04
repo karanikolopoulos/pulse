@@ -1,47 +1,17 @@
-import math
-
 import pandas as pd
 import pytest
 
-from pulse.ports import ChatModel, ModelServer
+from fakes import FakeServer, InMemoryStorage
+
 from pulse.bootstrap import bootstrap
+from pulse.application import Blocked
 from pulse.domain.poll import PulseConfig
-from pulse.domain.types import Token, Sequence
-from pulse.services.facade import Blocked
-from pulse.adapters.file_storage import FileStorage
-
-
-class FakeModel(ChatModel):
-    model = "fake"
-    max_logprobs = 10
-    max_logprobs_known = True
-    has_chat_template = True
-
-    def score(self, chat, continuations):
-        return [Sequence(tokens=[Token(token=f" {w}", logprob=-1.0, rank=1) for w in c.split()]) for c in continuations]
-
-    def next_tokens(self, chat, prefixes, k):
-        return [[Token(token=str(i), logprob=math.log(p), rank=i) for i, p in enumerate((0.5, 0.3, 0.2), 1)]] * len(
-            prefixes
-        )
-
-    def run_poll(self, poll, docs, completions):
-        return [dict.fromkeys(completions["alias"], 0.5)]
-
-
-class FakeServer(ModelServer):
-    def models(self):
-        return ["fake"]
-
-    def open(self, model):
-        return FakeModel()
-
 
 POLL = PulseConfig(name="p", persona="You are a voter.", question="Who?", answer="I vote", completions="c")
 
 
-def test_use_cases_are_guarded(tmp_path):
-    pulse = bootstrap(storage=FileStorage(root=tmp_path), connect=lambda url, token: FakeServer())
+def test_use_cases_are_guarded():
+    pulse = bootstrap(storage=InMemoryStorage(), connect=lambda url, token: FakeServer())
     pulse.add_table(kind="completions", name="c", df=pd.DataFrame({"A": ["x"], "B": ["y"], "alias": ["x/y"]}))
     pulse.save_poll(POLL)
     pulse.save_poll(PulseConfig(**{**vars(POLL), "name": "orphan", "answer": "I pick", "completions": "gone"}))

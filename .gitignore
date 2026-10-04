@@ -12,7 +12,9 @@ wheels/
 # Development
 .ruff_cache/
 .vscode/
-prototyping.ipynb
+.claude
 
 # Data
 /data/results/*
+# Local secrets (the app needs none)
+.streamlit/secrets.toml

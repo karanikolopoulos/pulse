@@ -3,11 +3,23 @@ from pathlib import Path
 from collections.abc import Callable
 
 import pandas as pd
+import streamlit as st
 import matplotlib.font_manager as fm
 
 from pandas.io.formats.style import Styler
 
 STATIC = Path(__file__).resolve().parent.parent / "static"
+DELAY = 0.5  # seconds a toast stays readable before a rerun
+
+
+@st.cache_data
+def _read_css(file_path: Path) -> str:
+    with open(file_path) as f:
+        return f"<style>{f.read()}</style>"
+
+
+def load_css(file_path: Path) -> None:
+    st.markdown(_read_css(file_path), unsafe_allow_html=True)
 
 
 class Placeholder(StrEnum):
