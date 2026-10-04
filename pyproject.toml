@@ -20,6 +20,7 @@ classifiers = [
 
 dependencies = [
   "datasets>=5.0.1",
+  "fsspec>=2026.6.0",
   "huggingface-hub>=1.33.0",
   "jinja2>=3.1.6",
   "lm-eval[api]>=0.4.13",
@@ -40,6 +41,7 @@ dev = [
   "commitizen>=4.19.1",
   "ipykernel>=7.4.0",
   "pre-commit>=4.6.2",
+  "pytest>=9.1.1",
   "ruff>=0.16.10",
 ]
 
@@ -90,6 +92,9 @@ ignore = [
   "PLR0917", # too-many-positional-arguments
   "W191",    # indentation-with-tabs, handled by ruff-format
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR2004"] # magic-value-comparison
 
 [tool.ruff.lint.isort]
 from-first = false

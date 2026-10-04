@@ -1,17 +1,29 @@
+import logging
+
 from typing import Final
 from operator import itemgetter
+from functools import cached_property
 
-from streamlit import logger
+from jinja2 import TemplateError
 from lm_eval.models.api_models import TemplateAPI
 
-from pulse.connection.types import (
-    Token,
-    Prompt,
-    ModelCard,
-    SampleRequest,
-)
+from pulse.domain.types import Chat, Token
+from pulse.adapters.vllm.types import Prompt, ModelCard, SampleRequest
 
-_LOGGER: Final = logger.get_logger(__name__)
+_LOGGER: Final = logging.getLogger(__name__)
+
+
+def merge_system_message(chat: Chat) -> Chat:
+    """Prepends a leading system message to the first user message, without modifying `chat`."""
+    if not chat or chat[0]["role"] != "system":
+        return chat
+
+    system, *rest = chat
+    if rest and rest[0]["role"] == "user":
+        user, *rest = rest
+        rest = [{**user, "content": f"{system['content']}\n{user['content']}"}, *rest]
+
+    return rest
 
 
 class VLLMCompletions(TemplateAPI):
@@ -39,14 +51,13 @@ class VLLMCompletions(TemplateAPI):
 
     def sample(self, requests: list[SampleRequest], **kwargs) -> list[Prompt]:
         assert self.tokenized_requests
-        extra_body = kwargs.get("extra_body", {})
-        add_generation_prompt = extra_body.pop("add_generation_prompt", True)
 
         sample_requests = []
         for chat, continuation in [req.args for req in requests]:
             context = self.apply_chat_template(
                 chat_history=chat,
-                add_generation_prompt=add_generation_prompt,
+                # continue a final assistant message (e.g. "I will vote for") instead of closing it
+                add_generation_prompt=chat[-1]["role"] != "assistant",
             )
 
             context_enc = self.tok_encode(context)
@@ -76,7 +87,6 @@ class VLLMCompletions(TemplateAPI):
         if generate:
             raise NotImplementedError
 
-        _LOGGER.info(f"kwargs: {kwargs}")
         extra_body = kwargs.pop("extra_body", {})
 
         to_ret = {
@@ -91,7 +101,7 @@ class VLLMCompletions(TemplateAPI):
             **extra_body,  # will overwrite
         }
 
-        _LOGGER.info(f"payload: {to_ret}")
+        _LOGGER.debug("payload: %s", to_ret)
         return to_ret
 
     @staticmethod
@@ -117,17 +127,17 @@ class VLLMCompletions(TemplateAPI):
         raise NotImplementedError
 
     def apply_chat_template(self, chat_history, add_generation_prompt=True):
-        if any(model in self.model.lower() for model in ["gemma", "mistral"]):
-            chat_history = self._combine_system(chat_history=chat_history)
+        if not self.supports_system_role:
+            chat_history = merge_system_message(chat_history)
         return super().apply_chat_template(chat_history, add_generation_prompt)
 
-    def _combine_system(self, chat_history: list[dict]) -> list[dict]:
-        system_msg, *chat = chat_history
-        if system_msg["role"] != "system":
-            return chat_history
-
-        system_content = system_msg["content"]
-        if chat and chat[0]["role"] == "user":
-            chat[0]["content"] = system_content + "\n" + chat[0]["content"]
-
-        return chat
+    @cached_property
+    def supports_system_role(self) -> bool:
+        """Whether the chat template accepts a system message (e.g. Gemma's raises on one)."""
+        probe = [{"role": "system", "content": "system"}, {"role": "user", "content": "user"}]
+        try:
+            self.tokenizer.apply_chat_template(probe, tokenize=False)
+        except TemplateError:
+            _LOGGER.info("%s has no system role, merging it into the user message", self.model)
+            return False
+        return True

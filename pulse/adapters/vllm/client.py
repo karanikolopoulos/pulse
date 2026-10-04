@@ -1,22 +1,21 @@
 import re
+import logging
 
 from http import HTTPStatus
-from typing import Final
+from typing import Any, Final
 from functools import cached_property
 from dataclasses import field, dataclass
 
 import requests
 
-from streamlit import logger
+from pulse.ports import ChatModel, ModelServer
+from pulse.domain.poll import PulseConfig
+from pulse.domain.types import Chat, Token, Sequence
+from pulse.adapters.vllm.types import Prompt, ModelCard, SampleRequest
+from pulse.adapters.vllm.polling import run_poll
+from pulse.adapters.vllm.completions import VLLMCompletions
 
-from pulse.connection.types import (
-    Prompt,
-    ModelCard,
-    SampleRequest,
-)
-from pulse.connection.vllm_completions import VLLMCompletions
-
-_LOGGER: Final = logger.get_logger(__name__)
+_LOGGER: Final = logging.getLogger(__name__)
 
 DEFAULT_MAX_LOGPROBS: Final = 20  # vLLM's default --max-logprobs
 
@@ -27,12 +26,15 @@ _MAX_ALLOWED: Final = re.compile(r"max allowed: (\d+)")
 
 
 @dataclass(frozen=True)
-class VLLMInstance:
+class VLLMModel(ChatModel):
+    """`LanguageModel` backed by a vLLM server's /v1/completions endpoint."""
+
     base_url: str
     model_card: ModelCard
     token: str = field(default="EMPTY", compare=False, hash=False)
     max_logprobs: int = DEFAULT_MAX_LOGPROBS
     seed: int = 2025
+    max_logprobs_known: bool = field(default=True, compare=False)  # False: read failed, using the default
 
     @cached_property
     def model(self) -> str:
@@ -44,7 +46,8 @@ class VLLMInstance:
 
     @cached_property
     def lm(self) -> VLLMCompletions:
-        _LOGGER.info(f"Accessing vLLM model: {self.model_card.id}")
+        """lm-eval model, also used directly by `lm_eval.evaluate`."""
+        _LOGGER.info("Accessing vLLM model: %s", self.model_card.id)
         return VLLMCompletions(
             base_url=self.completions_endpoint,
             api_key=self.token,
@@ -52,12 +55,33 @@ class VLLMInstance:
             seed=self.seed,
         )
 
-    def sample(self, requests: list[SampleRequest], **kwargs) -> list[Prompt]:
-        return self.lm.sample(requests=requests, **kwargs)
+    @property
+    def has_chat_template(self) -> bool:
+        return bool(self.lm.tokenizer.chat_template)
+
+    def score(self, chat: Chat, continuations: list[str]) -> list[Sequence]:
+        prompts = self._sample(chat=chat, continuations=continuations, logprobs=1)
+        return [prompt.continuation for prompt in prompts]
+
+    def next_tokens(self, chat: Chat, prefixes: list[str], k: int) -> list[list[Token]]:
+        prompts = self._sample(chat=chat, continuations=prefixes, logprobs=k)
+        return [prompt.next_tokens for prompt in prompts]
+
+    def run_poll(
+        self,
+        poll: PulseConfig,
+        docs: list[dict[str, Any]] | None,
+        completions: dict[str, list[str]],
+    ) -> list[dict[str, float]]:
+        return run_poll(lm=self.lm, poll=poll, docs=docs, completions=completions)
+
+    def _sample(self, chat: Chat, continuations: list[str], logprobs: int) -> list[Prompt]:
+        requests = [SampleRequest(context=chat, continuation=continuation) for continuation in continuations]
+        return self.lm.sample(requests=requests, extra_body={"logprobs": logprobs, "echo": False})
 
 
 @dataclass(frozen=True)
-class VLLMConnection:
+class VLLMConnection(ModelServer):
     base_url: str
     token: str | None = "EMPTY"
     seed: int = 2025
@@ -76,13 +100,21 @@ class VLLMConnection:
         data = resp.json().get("data", {})
         return tuple(ModelCard.from_dict(m) for m in data)
 
-    def get_vllm_client(self, model_card: ModelCard, max_logprobs: int) -> VLLMInstance:
-        return VLLMInstance(
+    def models(self) -> list[str]:
+        return [card.id for card in self.get_models()]
+
+    def open(self, model: str) -> VLLMModel:
+        """The served model with this id, with the server's max_logprobs."""
+        card = next(card for card in self.get_models() if card.id == model)
+        max_logprobs = self.resolve_max_logprobs(model_card=card)
+
+        return VLLMModel(
             base_url=self.base_url,
             token=self.token,
-            model_card=model_card,
-            max_logprobs=max_logprobs,
+            model_card=card,
+            max_logprobs=max_logprobs or DEFAULT_MAX_LOGPROBS,
             seed=self.seed,
+            max_logprobs_known=max_logprobs is not None,
         )
 
     def resolve_max_logprobs(self, model_card: ModelCard) -> int | None:

@@ -1,14 +1,10 @@
 import pandas as pd
 import streamlit as st
 
-from streamlit import session_state as ss
-
 from pulse.utils.plot import lineplot
-from pulse.pages.state import init_session_state, persist_session_state
 from pulse.utils.tools import Latex, styler
-
-init_session_state()
-persist_session_state()
+from pulse.pages.session import SESSION, Session
+from pulse.domain.scoring import ground_truth_diff
 
 ALIAS_COLUMN = 0
 
@@ -21,12 +17,9 @@ def select(runs: pd.DataFrame) -> tuple:
     model_runs = runs[runs.model == model]
     task = st.selectbox("Select task", model_runs.task.sort_values())
 
-    if "task" not in ss:
-        ss.task = task
-    elif task != ss.task:
-        ss.task = task
-        ss.pop("choices", None)
-        ss.pop("columns", None)
+    if task != SESSION.results_task:
+        SESSION.results_task = task
+        del SESSION.results_columns  # select all completions of the new task
 
     return model, task
 
@@ -38,7 +31,7 @@ def task_summary(results) -> None:
         label="Selected completions",
         options=choices["alias"],
         default=choices["alias"],
-        key="columns",
+        key=Session.results_columns.key,
     )
 
     menu_df = pd.DataFrame(
@@ -74,7 +67,7 @@ def diff_section(results) -> pd.DataFrame:
     else:
         diff.index = [index]
 
-    diff = diff[ss.columns]
+    diff = diff[SESSION.results_columns]
 
     diff["mean"] = diff.mean(axis=1)
     diff["SE"] = diff.std(axis=1) / diff.count(axis=1).apply(lambda x: x**0.5)
@@ -84,7 +77,7 @@ def diff_section(results) -> pd.DataFrame:
     diff_tab.table(
         data=styler(
             df=diff.drop(["mean", "SE"], axis=1),
-            subset=ss.columns,
+            subset=SESSION.results_columns,
             a_color="#a4c2f4",
             b_color="#ea9999",
             cell_text_color="#ffffff",
@@ -96,7 +89,7 @@ def diff_section(results) -> pd.DataFrame:
 
         agg_df = pd.DataFrame(diff[["mean", "SE"]])
 
-        pred = agg_df["mean"].apply(lambda x: "A" if x < 0 else "B")
+        pred = agg_df["mean"].apply(lambda x: "A" if x > 0 else "B")
         agg_df["mean"] = agg_df["mean"].round(3).astype(str)
         agg_df["SE"] = agg_df["SE"].round(4).astype(str)
         agg_df.index.name = "Target Group"
@@ -108,7 +101,7 @@ def diff_section(results) -> pd.DataFrame:
             a_color="#a4c2f4",
             b_color="#ea9999",
             cell_text_color="#ffffff",
-            cond=lambda x: x == "B",
+            cond=lambda x: x == "A",
         )
         df_col.table(data=styled)
 
@@ -119,10 +112,7 @@ def diff_section(results) -> pd.DataFrame:
 
 def get_ground_truth(docs: pd.DataFrame) -> list | None:
     if {"A pct", "B pct"}.issubset(docs.columns):
-        pct_a = docs["A pct"]
-        pct_b = docs["B pct"]
-
-        return ((pct_a - pct_b) / (pct_a + pct_b)).tolist()
+        return ground_truth_diff(pct_a=docs["A pct"], pct_b=docs["B pct"])
 
 
 def setup_sidebar() -> None:
@@ -134,14 +124,14 @@ def setup_sidebar() -> None:
         label="Figure x",
         options=[round(x * 0.1, 1) for x in range(50, 201)],
         value=8.0,
-        key="fig_x",
+        key=Session.fig_x.key,
     )
 
     y_col.select_slider(
         label="Figure y",
         options=[round(x * 0.1, 1) for x in range(50, 201)],
         value=8,
-        key="fig_y",
+        key=Session.fig_y.key,
     )
 
 
@@ -157,7 +147,7 @@ def lineplot_section(diff: pd.DataFrame, docs: pd.DataFrame) -> None:
 
     fig = lineplot(
         diff=diff,
-        figsize=(ss.fig_x, ss.fig_y),
+        figsize=(SESSION.fig_x, SESSION.fig_y),
         group_a_color="blue",
         group_b_color="red",
     )
@@ -167,17 +157,20 @@ def lineplot_section(diff: pd.DataFrame, docs: pd.DataFrame) -> None:
 
 
 st.header("PULSE - Polling Using LLM-based Sentiment Extraction")
-runs = ss.repo.runs
+runs = pd.DataFrame(
+    [(r.task, r.model, r.metrics, r.docs, r.completions) for r in SESSION.storage.results()],
+    columns=["task", "model", "metrics", "docs", "choices"],
+)
 
 with st.sidebar:
-    st.write("Repository")
+    st.write("Results")
     model, task = select(runs=runs)
 
 if runs.empty:  # guard
     st.warning("No experiments found.")
     st.stop()
 
-st.subheader(f"{ss.task} results")
+st.subheader(f"{SESSION.results_task} results")
 
 run = runs[(runs.model == model) & (runs.task == task)]
 

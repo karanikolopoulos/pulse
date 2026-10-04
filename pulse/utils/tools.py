@@ -21,16 +21,6 @@ class Latex(StrEnum):
     diff = r"$\overline{\mathrm{diff}}$"
 
 
-def contains_placeholder(s: str) -> bool:
-    """Detect if a string has Jinja2 placeholders."""
-    from jinja2 import Environment, meta  # noqa: PLC0415
-
-    env = Environment()
-    ast = env.parse(s)
-
-    return any(meta.find_undeclared_variables(ast))
-
-
 def styler(
     df: pd.DataFrame | Styler,
     subset: list[str] | None = None,
@@ -85,3 +75,47 @@ def apply_html(styler: Styler, cell_text_color: str = "white") -> Styler:
 def register_fonts(font_dir: Path = STATIC) -> None:
     for font in font_dir.rglob("*.ttf"):
         fm.fontManager.addfont(font)
+
+
+def get_position_table(
+    rankings: pd.DataFrame,
+    yes_bg: str = "lightgreen",
+    no_bg: str = "lightcoral",
+) -> Styler:
+    assert {"ranks", "elbows", "token_strings"}.issubset(rankings.columns)
+
+    def _cell_color(bg: str) -> str:
+        color = "color: black"
+        text_align = "text-align:center"
+        return f"background-color: {bg}; {color}; {text_align}"
+
+    max_len = max(len(r) for r in rankings["ranks"])
+
+    token_data = {f"token {i}": [] for i in range(max_len)}
+    style_data = {f"token {i}": [] for i in range(max_len)}
+
+    for _, row in rankings.iterrows():
+        tokens = row["token_strings"]
+        ranks = row["ranks"]
+        elbows = row["elbows"]
+
+        for i in range(max_len):
+            col_name = f"token {i}"
+            token = tokens[i] if i < len(tokens) else ""
+            token_data[col_name].append(token)
+
+            if i < len(ranks) and i < len(elbows):
+                if ranks[i] <= elbows[i]:
+                    style_data[col_name].append(_cell_color(yes_bg))
+                else:
+                    style_data[col_name].append(_cell_color(no_bg))
+            else:
+                style_data[col_name].append("")
+
+    token_data["logprob"] = rankings["logprob"].round(4).astype(str).tolist()
+    style_data["logprob"] = [""] * len(rankings)
+
+    comp_df = pd.DataFrame(token_data)
+    style_df = pd.DataFrame(style_data)
+
+    return comp_df.style.apply(lambda col: style_df[col.name], axis=0)
