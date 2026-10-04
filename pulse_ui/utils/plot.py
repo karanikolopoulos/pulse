@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 from pulse_ui.utils.tools import Latex, register_fonts
+from pulse.services.results import PollSummary
 
 STAR = {
     "xdata": [0],
@@ -31,7 +32,15 @@ plt.rcParams["font.weight"] = "medium"
 plt.rcParams["font.size"] = 13
 
 
-def lineplot(diff, figsize=(8, 6), group_a_color="blue", group_b_color="red") -> plt.Figure:
+def lineplot(summary: PollSummary, figsize=(8, 6), group_a_color="blue", group_b_color="red") -> plt.Figure:
+    """Each completion's P(A) - P(B) per persona group, coloured by the group's prediction,
+    with the real vote-share difference as a star where known."""
+    groups = summary.groups
+    diff = summary.scores.rename_axis("Target Group").reset_index().melt(id_vars="Target Group")
+    diff["mean"] = diff["Target Group"].map(groups["prediction"])
+    if groups["actual"].notna().any():
+        diff["pct_diff"] = diff["Target Group"].map(groups["actual"])
+
     fig, ax = plt.subplots(figsize=figsize, dpi=300)
 
     sns.pointplot(

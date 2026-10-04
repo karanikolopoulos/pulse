@@ -1,8 +1,10 @@
 """PULSE scoring. Sign convention: positive values favor group A, negative favor group B."""
 
+from typing import Literal
 from collections.abc import Sequence
 
 import numpy as np
+import pandas as pd
 
 from pulse.domain.types import Token
 
@@ -21,6 +23,16 @@ def ground_truth_diff(pct_a: Sequence[float], pct_b: Sequence[float]) -> list[fl
     """Normalized difference of observed vote shares, on the same scale as `norm_prob_diff`."""
     a, b = np.asarray(pct_a, dtype=float), np.asarray(pct_b, dtype=float)
     return ((a - b) / (a + b)).tolist()
+
+
+def standard_error(values: pd.DataFrame) -> pd.Series:
+    """Standard error of each row's mean: sample standard deviation / sqrt(n)."""
+    return values.std(axis=1) / np.sqrt(values.count(axis=1))
+
+
+def predicted_group(mean: float) -> Literal["A", "B"]:
+    """The group a mean P(A) - P(B) predicts; a tie counts as B."""
+    return "A" if mean > 0 else "B"
 
 
 def token_prefixes(tokens: Sequence[Token]) -> list[str]:

@@ -1,12 +1,12 @@
+from dataclasses import replace
+
 import pandas as pd
 import streamlit as st
 
 from pulse_ui.utils.plot import lineplot
-from pulse.domain.scoring import ground_truth_diff
 from pulse_ui.utils.tools import Latex, styler
+from pulse.services.results import PollSummary
 from pulse_ui.pages.session import pulse, results_view
-
-ALIAS_COLUMN = 0
 
 
 def select(runs: pd.DataFrame) -> tuple:
@@ -45,39 +45,27 @@ def task_summary(results) -> None:
     st.popover("All completions", use_container_width=True).dataframe(menu_df)
 
 
-def diff_section(results) -> pd.DataFrame:
-    def _escape_dollar(x):
-        if isinstance(x, str) and x.count("$") >= 2:  # noqa: PLR2004
-            return x.replace("$", r"\$")
+def _escape_dollar(label):
+    """Two `$` in a label would start LaTeX math in markdown tables and matplotlib."""
+    if isinstance(label, str) and label.count("$") >= 2:  # noqa: PLR2004
+        return label.replace("$", r"\$")
+    return label
 
-        return x
 
-    docs = results.docs.item()
-    has_docs = bool(docs)
-    metrics = results.metrics.item()
-
-    if has_docs:
-        index = pd.DataFrame(docs).iloc[:, ALIAS_COLUMN]
-    else:
-        index = results.task.item()
-
-    diff = pd.DataFrame(metrics)
-    if has_docs:
-        diff.index = index.map(_escape_dollar)
-    else:
-        diff.index = [index]
-
-    diff = diff[results_view.columns]
-
-    diff["mean"] = diff.mean(axis=1)
-    diff["SE"] = diff.std(axis=1) / diff.count(axis=1).apply(lambda x: x**0.5)
+def results_section(task: str, model: str) -> None:
+    summary = pulse().summarize(task=task, model=model, aliases=results_view.columns)
+    summary = replace(
+        summary,
+        scores=summary.scores.rename(index=_escape_dollar),
+        groups=summary.groups.rename(index=_escape_dollar),
+    )
 
     agg_tab, diff_tab = st.tabs(("Aggregated Results", "Individual Results"))
 
     diff_tab.table(
         data=styler(
-            df=diff.drop(["mean", "SE"], axis=1),
-            subset=results_view.columns,
+            df=summary.scores,
+            subset=list(summary.scores.columns),
             a_color="#a4c2f4",
             b_color="#ea9999",
             cell_text_color="#ffffff",
@@ -87,13 +75,14 @@ def diff_section(results) -> pd.DataFrame:
     with agg_tab:
         df_col, line_col = st.columns((0.3, 0.7))
 
-        agg_df = pd.DataFrame(diff[["mean", "SE"]])
-
-        pred = agg_df["mean"].apply(lambda x: "A" if x > 0 else "B")
-        agg_df["mean"] = agg_df["mean"].round(3).astype(str)
-        agg_df["SE"] = agg_df["SE"].round(4).astype(str)
-        agg_df.index.name = "Target Group"
-        agg_df = pd.DataFrame({"pred": pred, Latex.diff: agg_df["mean"], "SE": agg_df["SE"]})
+        groups = summary.groups
+        agg_df = pd.DataFrame(
+            {
+                "pred": groups["prediction"],
+                Latex.diff: groups["mean"].round(3).astype(str),
+                "SE": groups["se"].round(4).astype(str),
+            }
+        ).rename_axis("Target Group")
 
         styled = styler(
             df=agg_df,
@@ -105,14 +94,9 @@ def diff_section(results) -> pd.DataFrame:
         )
         df_col.table(data=styled)
 
-        if has_docs:
+        if summary.has_personas:
             with line_col:
-                lineplot_section(diff=diff, docs=pd.DataFrame(docs))
-
-
-def get_ground_truth(docs: pd.DataFrame) -> list | None:
-    if {"A pct", "B pct"}.issubset(docs.columns):
-        return ground_truth_diff(pct_a=docs["A pct"], pct_b=docs["B pct"])
+                lineplot_section(summary)
 
 
 def setup_sidebar() -> None:
@@ -135,18 +119,9 @@ def setup_sidebar() -> None:
     )
 
 
-def lineplot_section(diff: pd.DataFrame, docs: pd.DataFrame) -> None:
-    if ground_truth := get_ground_truth(docs=docs):
-        diff["pct_diff"] = ground_truth
-        id_vars = ["Target Group", "pct_diff", "mean"]
-    else:
-        id_vars = ["Target Group", "mean"]
-
-    diff["mean"] = diff["mean"].map(lambda x: "A" if x > 0 else "B")
-    diff = diff.drop("SE", axis=1).rename_axis("Target Group").reset_index().melt(id_vars=id_vars)
-
+def lineplot_section(summary: PollSummary) -> None:
     fig = lineplot(
-        diff=diff,
+        summary=summary,
         figsize=(results_view.fig_x, results_view.fig_y),
         group_a_color="blue",
         group_b_color="red",
@@ -176,5 +151,5 @@ run = runs[(runs.model == model) & (runs.task == task)]
 
 task_summary(results=run)  # menu container
 setup_sidebar()  # sidebar options
-diff = diff_section(results=run)  # data container
+results_section(task=task, model=model)  # data container
 st.empty().container(height=100, border=False)  # bottom padding

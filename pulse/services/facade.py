@@ -22,6 +22,7 @@ from pulse.domain.guards import (
 )
 from pulse.services.polling import run_poll
 from pulse.services.ranking import Ranker
+from pulse.services.results import PollSummary, summarize
 from pulse.services.explorer import next_token_table
 
 
@@ -100,6 +101,11 @@ class Pulse:
 
     def results(self) -> list[PulseResults]:
         return self._storage.results()
+
+    def summarize(self, task: str, model: str, aliases: list[str] | None = None) -> PollSummary:
+        """The saved run of `task` with `model`, summarized per persona group."""
+        results = next(r for r in self.results() if r.task == task and r.model == model)
+        return summarize(results, aliases=aliases)
 
     # saving
     def check_save(self, poll: PulseConfig) -> Clause | None:
