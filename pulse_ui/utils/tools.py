@@ -7,7 +7,7 @@ import matplotlib.font_manager as fm
 
 from pandas.io.formats.style import Styler
 
-from pulse.utils.paths import STATIC
+STATIC = Path(__file__).resolve().parent.parent / "static"
 
 
 class Placeholder(StrEnum):

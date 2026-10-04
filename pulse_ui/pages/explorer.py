@@ -1,19 +1,10 @@
-import pandas as pd
 import streamlit as st
 
 from streamlit.logger import get_logger
 
-from pulse.pages.state import (
-    st_md,
-    get_chat,
-    connection_guards,
-    sidebar_connection,
-)
-from pulse.utils.tools import Placeholder as ph
-from pulse.domain.types import Chat
-from pulse.domain.guards import first_error
-from pulse.pages.session import SESSION, Session
-from pulse.services.explorer import next_token_table
+from pulse_ui.pages.state import st_md, draft_poll, sidebar_connection
+from pulse_ui.utils.tools import Placeholder as ph
+from pulse_ui.pages.session import form, pulse, explorer
 
 st.header("PULSE - Polling Using LLM-based Sentiment Extraction")
 
@@ -25,30 +16,30 @@ with st.sidebar:
 
 
 def prompt_container():
-    max_logprobs = SESSION.client.max_logprobs
+    max_logprobs = pulse().model.max_logprobs
 
     with st.form("prompt_form"):
         st.text_input(
             label="Persona",
             placeholder=ph.persona,
-            **Session.persona.widget(),
+            **form.bind("persona"),
         )
         st.text_input(
             label="Question",
             placeholder=ph.question,
-            **Session.question.widget(),
+            **form.bind("question"),
         )
         answer_col, comp_col = st.columns(2)
 
         answer_col.text_input(
             label="Answer",
             placeholder=ph.answer,
-            **Session.answer.widget(),
+            **form.bind("answer"),
         )
         comp_col.text_input(
             label="completion",
             placeholder=ph.completion,
-            key=Session.completion.key,
+            key=explorer.key("completion"),
             help="Mind the leading whitespace!",
         )
 
@@ -70,29 +61,21 @@ def prompt_container():
         )
 
 
-@st.cache_data
-def get_next_tokens(model_id: str, context: Chat, continuation: str, k: int) -> pd.DataFrame:
-    """`model_id` keys the cache, so switching models doesn't return another model's tokens."""
-    return next_token_table(model=SESSION.client, chat=context, prefix=continuation, k=k)
-
-
 def sample(logprobs: int) -> None:
-    if chat := get_chat():
-        logger.info(chat)
-        SESSION.sample_df = get_next_tokens(
-            model_id=SESSION.client.model,
-            context=chat,
-            continuation=SESSION.completion,
-            k=logprobs,
-        )
-    else:
-        SESSION.sample_df = None
+    poll = draft_poll()
+    if failure := pulse().check_explore(poll):
+        st.toast(failure.msg)
+        explorer.sample_df = None
+        return
+
+    logger.info(poll)
+    explorer.sample_df = pulse().next_tokens(poll, prefix=explorer.completion or "", k=logprobs)
 
 
 _, column, _ = st.columns((0.2, 0.2, 0.2))
 column.subheader("Explorer")
 
-if failure := first_error(connection_guards()):
+if failure := pulse().check_connection():
     st.error(failure.msg)
     st.stop()
 
@@ -102,7 +85,7 @@ with column:
 
 st_md("Next token", container=column)
 next_container = column.container(border=True, height=165)
-sample_df = SESSION.sample_df
+sample_df = explorer.sample_df
 if sample_df is not None:
     next_container.dataframe(sample_df, height=415)
 

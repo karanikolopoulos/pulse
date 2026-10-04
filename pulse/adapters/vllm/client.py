@@ -141,6 +141,13 @@ class VLLMConnection(ModelServer):
         _LOGGER.warning("Could not read max_logprobs for %s", model_card.id)
         return None
 
+    @classmethod
+    def connect(cls, url: str, token: str | None = None) -> "VLLMConnection":
+        """A connection to a running server; raises ConnectionError if /health doesn't answer OK."""
+        if (code := cls.is_alive(url=url)) != HTTPStatus.OK:
+            raise ConnectionError(f"{url} - {code}")
+        return cls(base_url=url, token=token)
+
     @staticmethod
     def is_alive(url: str) -> int:
         health_endpoint = url.rstrip("/") + "/health"

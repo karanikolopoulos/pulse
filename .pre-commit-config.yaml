@@ -40,3 +40,12 @@ repos:
     hooks:
     -   id: commitizen
         stages: [commit-msg]
+# Architecture boundaries (pyproject.toml [tool.importlinter])
+-   repo: local
+    hooks:
+    -   id: import-linter
+        name: import linter
+        entry: uv run lint-imports
+        language: system
+        pass_filenames: false
+        types: [python]

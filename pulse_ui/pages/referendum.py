@@ -11,22 +11,17 @@ from streamlit.delta_generator import DeltaGenerator
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from pulse.domain.poll import Status, TableKind, PulseConfig
-from pulse.pages.state import (
+from pulse_ui.pages.state import (
     DELAY,
     st_md,
-    get_chat,
     is_update,
     draft_poll,
-    get_ranker,
-    connection_guards,
     sidebar_connection,
 )
-from pulse.utils.tools import Placeholder as ph, apply_html, get_position_table
-from pulse.domain.guards import RunGuards, PollGuards, TableGuards, RankingGuards, first_error
-from pulse.pages.session import SESSION, Session, SessionValue
-from pulse.pages.shortcuts import activate_shortcuts
-from pulse.services.polling import run_poll
+from pulse_ui.utils.tools import Placeholder as ph, apply_html, get_position_table
 from pulse.services.ranking import Ranker
+from pulse_ui.pages.session import form, pulse, analysis
+from pulse_ui.pages.shortcuts import activate_shortcuts
 
 # region CONFIGURATION
 logger = get_logger(__name__)
@@ -57,7 +52,7 @@ def _validate_entity_creation(
         st.error(f"Please provide a name for the {kind}.")
         st.stop()
 
-    if name in SESSION.storage.table_names(kind=kind):
+    if name in pulse().tables(kind=kind):
         st.error(f"{kind.capitalize()} '{name}' already exists.")
         st.stop()
 
@@ -109,7 +104,7 @@ def create_entity(
             bool(default_columns),
         )
 
-        status = SESSION.storage.add_table(kind=kind, name=name, df=changed.reset_index(drop=True))
+        status = pulse().add_table(kind=kind, name=name, df=changed.reset_index(drop=True))
         if status == Status.OK:
             st.toast(f"Created {kind} '{name}'")
             time.sleep(DELAY)
@@ -121,10 +116,10 @@ def create_entity(
 def edit_entity(kind: TableKind, selected_name: str) -> None:
     """Generic function to edit existing personas or completions."""
     st.write(selected_name.capitalize())
-    changed = st.data_editor(SESSION.storage.get_table(kind=kind, name=selected_name), num_rows="dynamic")
+    changed = st.data_editor(pulse().table(kind=kind, name=selected_name), num_rows="dynamic")
 
     if st.button("Save"):
-        if (status := SESSION.storage.update_table(kind=kind, name=selected_name, df=changed)) != Status.OK:
+        if (status := pulse().update_table(kind=kind, name=selected_name, df=changed)) != Status.OK:
             st.error(f"Failed with status: {status.value}")
             st.stop()
 
@@ -133,12 +128,12 @@ def edit_entity(kind: TableKind, selected_name: str) -> None:
         st.rerun()
 
 
-def delete_entity(kind: TableKind, selected_name: str, selection: SessionValue[str | None]) -> None:
+def delete_entity(kind: TableKind, selected_name: str, selection: str) -> None:
     """Generic function to delete personas or completions."""
     st.error(f"Confirm: Delete {kind} '{selected_name}'?")
     if st.button("Confirm"):
-        SESSION.storage.delete_table(kind=kind, name=selected_name)
-        selection.set(None)
+        pulse().delete_table(kind=kind, name=selected_name)
+        setattr(form, selection, None)
         st.toast(f"Deleted {kind} '{selected_name}'")
         time.sleep(DELAY)
         st.rerun()
@@ -156,7 +151,7 @@ def edit_persona(selected_persona: str) -> None:
 
 @st.dialog("Delete Persona", width="small")
 def delete_persona(selected_persona: str) -> None:
-    delete_entity(kind="personas", selected_name=selected_persona, selection=Session.selected_persona)
+    delete_entity(kind="personas", selected_name=selected_persona, selection="selected_persona")
 
 
 @st.dialog("Create completions", width="large")
@@ -171,7 +166,7 @@ def edit_completions(selected_completions: str) -> None:
 
 @st.dialog("Delete Completions", width="small")
 def delete_completions(selected_completions: str) -> None:
-    delete_entity(kind="completions", selected_name=selected_completions, selection=Session.selected_completions)
+    delete_entity(kind="completions", selected_name=selected_completions, selection="selected_completions")
 
 
 # endregion
@@ -180,59 +175,46 @@ def delete_completions(selected_completions: str) -> None:
 # region TASK OPERATIONS
 def reset_config() -> None:
     """Clear the form for a new poll."""
-    for value in (
-        Session.poll_name,
-        Session.persona,
-        Session.question,
-        Session.answer,
-        Session.selected_persona,
-        Session.selected_completions,
-    ):
-        value.set(None)
+    for field in ("poll_name", "persona", "question", "answer", "selected_persona", "selected_completions"):
+        setattr(form, field, None)
 
 
 def load_selected_task() -> None:
     """Fill the form with the selected saved poll."""
-    if not (task_name := SESSION.selected_task):
+    if not (task_name := form.selected_task):
         reset_config()
         return
 
-    poll = SESSION.storage.get_poll(task_name)
-    tables = TableGuards(
-        poll=poll,
-        personas=SESSION.storage.table_names(kind="personas"),
-        completions=SESSION.storage.table_names(kind="completions"),
-    )
+    poll, problems = pulse().load_poll(task_name)
+    form.poll_name = poll.name
+    form.persona = poll.persona
+    form.question = poll.question
+    form.answer = poll.answer
+    form.selected_persona = poll.docs
+    form.selected_completions = poll.completions
 
-    SESSION.poll_name = poll.name
-    SESSION.persona = poll.persona
-    SESSION.question = poll.question
-    SESSION.answer = poll.answer
-    SESSION.selected_persona = poll.docs if tables.personas_exist.ok else None
-    SESSION.selected_completions = poll.completions if tables.completions_exist.ok else None
-
-    for clause in tables.errors:
+    for clause in problems:
         st.toast(clause.msg)
 
 
 def store_poll(poll: PulseConfig, op: Literal["saved", "updated"]) -> bool:
     """Add or update a poll in storage; a new poll becomes the selected one."""
-    status = SESSION.storage.save_poll(poll)
+    status = pulse().save_poll(poll)
     if status != Status.OK:
         st.toast(f"Save failed: {status}")
         return False
 
     st.toast(f"Task {op} successfully.")
     if op == "saved":
-        SESSION.poll_name = poll.name
-        SESSION.selected_task = poll.name  # widget key: only settable before the selectbox renders, i.e. in a callback
+        form.poll_name = poll.name
+        form.selected_task = poll.name  # a widget key: settable here because this runs as a callback
     return True
 
 
 def pre_save() -> None:
     """Validate the poll before update/save."""
     poll = draft_poll()
-    if failure := first_error(PollGuards(poll)):
+    if failure := pulse().check_save(poll):
         st.toast(failure.msg)
         return
 
@@ -246,30 +228,30 @@ def pre_save() -> None:
 @st.dialog("Save Poll", width="small")
 def save() -> None:
     """Save the poll under a new name."""
-    name = st.text_input(label="Poll Name", key=Session.new_poll_name.key)
+    name = st.text_input(label="Poll Name", key=form.key("new_poll_name"))
     poll = replace(draft_poll(), name=name)
 
     if st.button("Save", disabled=not name.strip(), on_click=store_poll, args=(poll, "saved")):
-        if SESSION.poll_name == name:  # saved by the callback
+        if form.poll_name == name:  # saved by the callback
             time.sleep(DELAY)
             st.rerun()
 
 
 def pre_run() -> None:
     """Validate and run the selected poll."""
-    if clause := first_error(connection_guards(), RunGuards(draft_poll(), selected_poll=SESSION.selected_task)):
+    if clause := pulse().check_run(form.selected_task):
         st.toast(clause.msg)
         return
 
-    run_task(name=SESSION.selected_task)
+    run_task(name=form.selected_task)
 
 
 @st.dialog("Evaluation", width="large")
 def run_task(name: str) -> None:
     """Execute evaluation task with the selected model."""
     with st.spinner(f"Running {name} poll"):
-        st.info(SESSION.question)
-        results = run_poll(runner=SESSION.client, storage=SESSION.storage, poll_name=name)
+        st.info(form.question)
+        results = pulse().run_poll(name)
 
     st.success(f"Run completed for Poll '{name}' with model '{results.model}'")
     time.sleep(2)
@@ -286,31 +268,19 @@ def step(p_bar, value: int | float, text: str, delay: float = 0.0) -> None:
     time.sleep(delay)
 
 
-def pre_rank(container: DeltaGenerator) -> tuple[pd.DataFrame, pd.DataFrame] | None:
-    """Validate and prepare data for ranking completions."""
-    if clause := first_error(connection_guards(), RankingGuards(draft_poll())):
-        SESSION.rankings = None
+def pre_rank(container: DeltaGenerator) -> None:
+    """Validate and rank the completions of the poll in the form."""
+    poll = draft_poll()
+    if clause := pulse().check_ranking(poll):
+        analysis.rankings = None
         container.warning(clause.msg)
-        return None
+        return
 
-    chat, completions = get_chat(), SESSION.selected_completions
-    completions = SESSION.storage.get_table(kind="completions", name=completions).to_dict(orient="list")
+    ranker = pulse().ranker(poll, v_pct=st.secrets.V_PCT, min_p=st.secrets.MIN_P)
+    if ranker != analysis.ranker:  # same poll and model: reuse the computed ranking
+        analysis.ranker = ranker
 
-    # setup ranker for vllm client and parameters - cached
-    ranker = get_ranker(
-        client=SESSION.client,
-        chat=chat,
-        group_a=completions["A"],
-        group_b=completions["B"],
-        v_pct=st.secrets.V_PCT,
-        min_p=st.secrets.MIN_P,
-    )
-
-    if rankings := rank(container=container, ranker=ranker):
-        SESSION.rankings = rankings
-        # st.rerun()
-    else:
-        SESSION.rankings = None
+    analysis.rankings = rank(container=container, ranker=analysis.ranker)
 
 
 def rank(container: DeltaGenerator, ranker: Ranker, delay: float = 0.5) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -340,21 +310,21 @@ def select_container() -> None:
     t_col, btn_col = st.columns((0.4, 0.6), vertical_alignment="bottom")
     t_col.selectbox(
         label="Polls",
-        options=SESSION.storage.poll_names(),
+        options=pulse().polls(),
         index=None,
         placeholder="Select a Poll",
-        **Session.selected_task.widget(),
+        **form.bind("selected_task"),
         on_change=load_selected_task,
     )
 
-    disabled = not SESSION.selected_task
+    disabled = not form.selected_task
     save_col, run_col, del_col = btn_col.columns(3)
     if save_col.button(label="Save", use_container_width=True, key="save_task"):
         pre_save()
     if run_col.button(label="Run", use_container_width=True, disabled=disabled, key="run_task"):
         pre_run()
     if del_col.button(label="Delete", use_container_width=True, disabled=disabled, key="delete_task"):
-        SESSION.storage.delete_poll(SESSION.selected_task)
+        pulse().delete_poll(form.selected_task)
         st.rerun()
 
 
@@ -366,19 +336,19 @@ def prompt_container() -> None:
         st.text_input(
             label="Persona",
             placeholder="You are {{ persona }}.",
-            **Session.persona.widget(),
+            **form.bind("persona"),
         )
         with st.expander("Batch personas"):
             batch_container()
         st.text_input(
             label="Question",
             placeholder=ph.question,
-            **Session.question.widget(),
+            **form.bind("question"),
         )
         st.text_input(
             label="Answer",
             placeholder=ph.answer,
-            **Session.answer.widget(),
+            **form.bind("answer"),
         )
 
 
@@ -386,9 +356,9 @@ def batch_container() -> None:
     """Render batch personas selection and management UI."""
     st.selectbox(
         label="Select personas",
-        options=SESSION.storage.table_names(kind="personas"),
+        options=pulse().tables(kind="personas"),
         index=None,
-        **Session.selected_persona.widget(),
+        **form.bind("selected_persona"),
     )
     new_col, edit_col, del_col = st.columns(3)
     new_col.button(
@@ -398,7 +368,7 @@ def batch_container() -> None:
         use_container_width=True,
     )
 
-    selected_persona = SESSION.selected_persona
+    selected_persona = form.selected_persona
     edit_col.button(
         label="View/Edit",
         on_click=edit_persona,
@@ -422,15 +392,15 @@ def completions_container() -> None:
     """Render completions selection and management UI."""
     st.selectbox(
         label="Select completions",
-        options=SESSION.storage.table_names(kind="completions"),
+        options=pulse().tables(kind="completions"),
         index=None,
-        **Session.selected_completions.widget(),
+        **form.bind("selected_completions"),
     )
 
     new_col, edit_col, del_col = st.columns(3)
     new_col.button("Create", on_click=create_completions, use_container_width=True)
 
-    selected_completions = SESSION.selected_completions
+    selected_completions = form.selected_completions
     edit_col.button(
         label="View/Edit",
         on_click=edit_completions,
@@ -449,7 +419,7 @@ def completions_container() -> None:
 
 def analysis_container(parent: DeltaGenerator) -> None:
     """Render analysis tables for ranked completions (Side A and Side B)."""
-    if rankings := SESSION.rankings:
+    if rankings := analysis.rankings:
         A_df, B_df = rankings
         # Group A
         A_pos = get_position_table(rankings=A_df)
@@ -467,7 +437,7 @@ def analysis_container(parent: DeltaGenerator) -> None:
 
 
 def raise_rank_flag():
-    SESSION.rank_flag = True
+    analysis.rank_flag = True
     st.rerun()
 
 
@@ -491,8 +461,8 @@ with task_cont:
 with task_cont.container(border=True):
     completions_container()  # fragment
 
-if SESSION.rank_flag:
-    SESSION.rank_flag = False
+if analysis.rank_flag:
+    analysis.rank_flag = False
     pre_rank(container=comp_cont)
 
 analysis_container(parent=comp_cont)

@@ -4,8 +4,8 @@ import streamlit as st
 
 from st_pages import get_nav_from_toml
 
-from pulse.pages.state import load_css
-from pulse.utils.login import hf_login
+from pulse_ui.pages.state import load_css
+from pulse_ui.utils.login import hf_login
 
 hf_login()
 

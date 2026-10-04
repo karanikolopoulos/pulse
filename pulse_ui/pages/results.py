@@ -1,10 +1,10 @@
 import pandas as pd
 import streamlit as st
 
-from pulse.utils.plot import lineplot
-from pulse.utils.tools import Latex, styler
-from pulse.pages.session import SESSION, Session
+from pulse_ui.utils.plot import lineplot
 from pulse.domain.scoring import ground_truth_diff
+from pulse_ui.utils.tools import Latex, styler
+from pulse_ui.pages.session import pulse, results_view
 
 ALIAS_COLUMN = 0
 
@@ -17,9 +17,9 @@ def select(runs: pd.DataFrame) -> tuple:
     model_runs = runs[runs.model == model]
     task = st.selectbox("Select task", model_runs.task.sort_values())
 
-    if task != SESSION.results_task:
-        SESSION.results_task = task
-        del SESSION.results_columns  # select all completions of the new task
+    if task != results_view.task:
+        results_view.task = task
+        del results_view.columns  # select all completions of the new task
 
     return model, task
 
@@ -31,7 +31,7 @@ def task_summary(results) -> None:
         label="Selected completions",
         options=choices["alias"],
         default=choices["alias"],
-        key=Session.results_columns.key,
+        key=results_view.key("columns"),
     )
 
     menu_df = pd.DataFrame(
@@ -67,7 +67,7 @@ def diff_section(results) -> pd.DataFrame:
     else:
         diff.index = [index]
 
-    diff = diff[SESSION.results_columns]
+    diff = diff[results_view.columns]
 
     diff["mean"] = diff.mean(axis=1)
     diff["SE"] = diff.std(axis=1) / diff.count(axis=1).apply(lambda x: x**0.5)
@@ -77,7 +77,7 @@ def diff_section(results) -> pd.DataFrame:
     diff_tab.table(
         data=styler(
             df=diff.drop(["mean", "SE"], axis=1),
-            subset=SESSION.results_columns,
+            subset=results_view.columns,
             a_color="#a4c2f4",
             b_color="#ea9999",
             cell_text_color="#ffffff",
@@ -124,14 +124,14 @@ def setup_sidebar() -> None:
         label="Figure x",
         options=[round(x * 0.1, 1) for x in range(50, 201)],
         value=8.0,
-        key=Session.fig_x.key,
+        key=results_view.key("fig_x"),
     )
 
     y_col.select_slider(
         label="Figure y",
         options=[round(x * 0.1, 1) for x in range(50, 201)],
         value=8,
-        key=Session.fig_y.key,
+        key=results_view.key("fig_y"),
     )
 
 
@@ -147,7 +147,7 @@ def lineplot_section(diff: pd.DataFrame, docs: pd.DataFrame) -> None:
 
     fig = lineplot(
         diff=diff,
-        figsize=(SESSION.fig_x, SESSION.fig_y),
+        figsize=(results_view.fig_x, results_view.fig_y),
         group_a_color="blue",
         group_b_color="red",
     )
@@ -158,7 +158,7 @@ def lineplot_section(diff: pd.DataFrame, docs: pd.DataFrame) -> None:
 
 st.header("PULSE - Polling Using LLM-based Sentiment Extraction")
 runs = pd.DataFrame(
-    [(r.task, r.model, r.metrics, r.docs, r.completions) for r in SESSION.storage.results()],
+    [(r.task, r.model, r.metrics, r.docs, r.completions) for r in pulse().results()],
     columns=["task", "model", "metrics", "docs", "choices"],
 )
 
@@ -170,7 +170,7 @@ if runs.empty:  # guard
     st.warning("No experiments found.")
     st.stop()
 
-st.subheader(f"{SESSION.results_task} results")
+st.subheader(f"{results_view.task} results")
 
 run = runs[(runs.model == model) & (runs.task == task)]
 

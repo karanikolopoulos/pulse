@@ -39,6 +39,7 @@ dependencies = [
 [dependency-groups]
 dev = [
   "commitizen>=4.19.1",
+  "import-linter>=2.15",
   "ipykernel>=7.4.0",
   "pre-commit>=4.6.2",
   "pytest>=9.1.1",
@@ -49,14 +50,14 @@ dev = [
 GitHub = "https://github.com/karanikolopoulos/pulse"
 
 [project.scripts]
-pulse = "pulse.cli:run"
+pulse = "pulse_ui.cli:run"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["pulse"]
+packages = ["pulse", "pulse_ui"]
 
 [tool.commitizen]
 name = "cz_conventional_commits"
@@ -101,9 +102,36 @@ from-first = false
 force-single-line = false
 length-sort = true
 lines-between-types = 1
-known-first-party = ["pulse"]
+known-first-party = ["pulse", "pulse_ui"]
 combine-as-imports = true
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.importlinter]
+root_packages = ["pulse", "pulse_ui"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "The core does not depend on the UI"
+type = "forbidden"
+source_modules = ["pulse"]
+forbidden_modules = ["pulse_ui", "streamlit", "st_pages", "streamlit_hotkeys"]
+
+[[tool.importlinter.contracts]]
+name = "Core layers depend inward"
+type = "layers"
+layers = [
+  "pulse.bootstrap",
+  "pulse.services | pulse.adapters",
+  "pulse.ports",
+  "pulse.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "The UI uses the core through bootstrap, services and domain types, not adapters"
+type = "forbidden"
+source_modules = ["pulse_ui"]
+forbidden_modules = ["pulse.adapters"]
+allow_indirect_imports = true  # via bootstrap, the composition root

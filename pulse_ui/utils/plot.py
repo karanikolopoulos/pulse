@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 from matplotlib.lines import Line2D
 
-from pulse.utils.tools import Latex, register_fonts
+from pulse_ui.utils.tools import Latex, register_fonts
 
 STAR = {
     "xdata": [0],
