@@ -82,6 +82,7 @@ def test_results_page_summarizes_a_run(at):
 
     assert [subheader.value for subheader in at.subheader] == ["batch results"]
     assert len(at.table) == 2  # aggregated and per-completion tables
+    assert len(at.get("vega_lite_chart")) == 1  # per-group chart
     assert not at.exception
 
 

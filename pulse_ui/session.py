@@ -95,8 +95,6 @@ class Explorer(SessionGroup):
 class ResultsView(SessionGroup):
     task: str | None = None
     columns: list[str] | None = None  # completions multiselect
-    fig_x: float | None = None
-    fig_y: float | None = None
 
 
 connection = ConnectionForm()

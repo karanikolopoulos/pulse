@@ -4,11 +4,9 @@ from collections.abc import Callable
 
 import pandas as pd
 import streamlit as st
-import matplotlib.font_manager as fm
 
 from pandas.io.formats.style import Styler
 
-STATIC = Path(__file__).resolve().parent.parent / "static"
 DELAY = 0.5  # seconds a toast stays readable before a rerun
 
 
@@ -38,55 +36,28 @@ def styler(
     subset: list[str] | None = None,
     a_color: str = "#a4c2f4",
     b_color: str = "#ea9999",
-    cell_text_color: str = "white",
     cond: Callable = lambda x: x >= 0,
 ) -> Styler:
+    """Colours the cells of `subset` by group A/B; the text of coloured cells is black, so it reads on any theme."""
+
     def _fn(x):  # style condition for data cells
         color = a_color if cond(x) else b_color
         return f"background-color: {color}; color: black"
 
-    styler = df.style.map(_fn, subset=pd.IndexSlice[:, subset])
-    return apply_html(styler, cell_text_color=cell_text_color)
+    return align(df.style.map(_fn, subset=pd.IndexSlice[:, subset]))
 
 
-def apply_html(styler: Styler, cell_text_color: str = "white") -> Styler:
+def align(styler: Styler) -> Styler:
+    """Centres headers and cells and left-aligns row labels; colours come from the theme."""
     return styler.set_table_styles(
         [
-            {  # index name
-                "selector": "th.blank",
-                "props": [
-                    ("color", cell_text_color),
-                    ("text-align", "center"),
-                ],
-            },
-            {  # index
-                "selector": "th.row_heading",
-                "props": [
-                    ("color", cell_text_color),
-                    ("text-align", "left"),
-                ],
-            },
-            {  # column text color
-                "selector": "th.col_heading",
-                "props": [
-                    ("color", cell_text_color),
-                    ("text-align", "center"),
-                ],
-            },
-            {  # cell text color
-                "selector": "td > div",
-                "props": [
-                    ("text-align", "center"),
-                ],
-            },
+            {"selector": "th.blank", "props": [("text-align", "center")]},
+            {"selector": "th.row_heading", "props": [("text-align", "left")]},
+            {"selector": "th.col_heading", "props": [("text-align", "center")]},
+            {"selector": "td > div", "props": [("text-align", "center")]},
         ],
         overwrite=False,
     )
-
-
-def register_fonts(font_dir: Path = STATIC) -> None:
-    for font in font_dir.rglob("*.ttf"):
-        fm.fontManager.addfont(font)
 
 
 def get_position_table(

@@ -1,86 +1,67 @@
-import seaborn as sns
-import matplotlib.pyplot as plt
+"""Results chart: each persona group's mean P(A) - P(B), with its 95% interval and the real vote-share difference."""
 
-from matplotlib.lines import Line2D
+import altair as alt
+import pandas as pd
 
 from pulse.application import PollSummary
-from pulse_ui.utils.tools import Latex, register_fonts
 
-STAR = {
-    "xdata": [0],
-    "ydata": [0],
-    "marker": "*",
-    "color": "black",
-    "markersize": 6,
-    "linestyle": "None",
-    "label": "actual difference",
-}
-
-CIRCLE = {
-    "xdata": [0],
-    "ydata": [0],
-    "marker": "o",
-    "color": "black",
-    "markersize": 4,
-    "linestyle": "None",
-    "label": "predicted difference",
-}
-
-register_fonts()
-plt.rcParams["font.family"] = "Source Sans 3"
-plt.rcParams["font.weight"] = "medium"
-plt.rcParams["font.size"] = 13
+GROUP_COLORS = {"A": "#2563EB", "B": "#DC2626"}  # blue / red: stays distinct under red-green colour blindness
+ROW_HEIGHT = 26
+# five-pointed star as a Vega SVG path, in the unit square
+STAR = "M0,-1L0.29,-0.4L0.95,-0.31L0.47,0.15L0.59,0.81L0,0.5L-0.59,0.81L-0.47,0.15L-0.95,-0.31L-0.29,-0.4Z"
 
 
-def lineplot(summary: PollSummary, figsize=(8, 6), group_a_color="blue", group_b_color="red") -> plt.Figure:
-    """Each completion's P(A) - P(B) per persona group, coloured by the group's prediction,
-    with the real vote-share difference as a star where known."""
+def prediction_chart(summary: PollSummary) -> alt.LayerChart:
+    """Mean with mean ± 1.96·SE per group, coloured by the predicted group; a star marks the real difference."""
     groups = summary.groups
-    diff = summary.scores.rename_axis("Target Group").reset_index().melt(id_vars="Target Group")
-    diff["mean"] = diff["Target Group"].map(groups["prediction"])
-    if groups["actual"].notna().any():
-        diff["pct_diff"] = diff["Target Group"].map(groups["actual"])
-
-    fig, ax = plt.subplots(figsize=figsize, dpi=300)
-
-    sns.pointplot(
-        data=diff,
-        x="value",
-        y="Target Group",
-        hue="mean",
-        dodge=False,
-        palette={"A": group_a_color, "B": group_b_color},
-        linestyle="none",
-        markersize=5,
-        linewidth=2,
-        seed=2025,
+    data = pd.DataFrame(
+        {
+            "group": groups.index.astype(str),
+            "mean": groups["mean"],
+            # P(A) - P(B) is bounded by [-1, 1], so the interval is clamped to the axis
+            "low": (groups["mean"] - 1.96 * groups["se"]).clip(-1, 1),
+            "high": (groups["mean"] + 1.96 * groups["se"]).clip(-1, 1),
+            "se": groups["se"],
+            "prediction": groups["prediction"],
+            "actual": groups["actual"],
+        }
     )
 
-    if "pct_diff" in diff:
-        ax.scatter(
-            data=diff,
-            x="pct_diff",
-            y="Target Group",
-            marker="*",
-            c="black",
-            edgecolors="black",
-            linewidths=0.8,
-            s=45,
-            alpha=0.5,
-            zorder=2,
+    y = alt.Y("group:N", sort=list(data["group"]), title=None)
+    x_scale = alt.Scale(domain=[-1, 1])
+    color = alt.Color(
+        "prediction:N",
+        scale=alt.Scale(domain=list(GROUP_COLORS), range=list(GROUP_COLORS.values())),
+        legend=alt.Legend(title="Predicted group", orient="top"),
+    )
+    tooltip = [
+        alt.Tooltip("group:N", title="Group"),
+        alt.Tooltip("prediction:N", title="Predicted"),
+        alt.Tooltip("mean:Q", title="Mean P(A) − P(B)", format="+.3f"),
+        alt.Tooltip("se:Q", title="SE", format=".4f"),
+        alt.Tooltip("actual:Q", title="Actual difference", format="+.3f"),
+    ]
+
+    base = alt.Chart(data).encode(y=y)
+    zero = alt.Chart(pd.DataFrame({"x": [0]})).mark_rule(strokeDash=[4, 4], opacity=0.6).encode(x="x:Q")
+    interval = base.mark_rule(strokeWidth=2, clip=True).encode(
+        x=alt.X("low:Q", scale=x_scale), x2="high:Q", color=color
+    )
+    mean = base.mark_circle(size=80, opacity=1).encode(
+        x=alt.X(
+            "mean:Q",
+            scale=x_scale,
+            axis=alt.Axis(values=[-1, 0, 1], format="+d", title="Mean P(A) − P(B)  (A > 0 > B)"),
+        ),
+        color=color,
+        tooltip=tooltip,
+    )
+    layers = [zero, interval, mean]
+
+    if data["actual"].notna().any():
+        actual = base.mark_point(shape=STAR, size=120, filled=True, color="gray", opacity=0.7).encode(
+            x=alt.X("actual:Q", scale=x_scale), tooltip=tooltip
         )
+        layers.append(actual)
 
-    _, fig_height = figsize
-    ax.set_ylabel("")
-    ax.axvline(0, color="black", linestyle="--", linewidth=1)
-    ax.legend(
-        handles=[Line2D(**CIRCLE), Line2D(**STAR)],
-        loc="upper center",
-        bbox_to_anchor=(0.475, 1.01 + 0.075 * (7 / fig_height)),
-        ncols=2,
-    )
-    ax.set_xticks([-1, 0, 1])
-    ax.set_xlabel(Latex.diff)
-    plt.margins(y=0.02)
-
-    return fig
+    return alt.layer(*layers).properties(height=ROW_HEIGHT * len(data))

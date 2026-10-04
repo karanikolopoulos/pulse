@@ -9,7 +9,7 @@ from streamlit.delta_generator import DeltaGenerator
 
 from pulse_ui.session import pulse, analysis
 from pulse.application import Ranker
-from pulse_ui.utils.tools import apply_html, get_position_table
+from pulse_ui.utils.tools import align, get_position_table
 from pulse_ui.components.poll_form import draft_poll
 
 
@@ -69,4 +69,4 @@ def _step(p_bar, value: float, text: str, delay: float = 0.0) -> None:
 def _side(container: DeltaGenerator, title: str, rankings: pd.DataFrame) -> None:
     container.markdown(f"**{title}**", text_alignment="center")
     with container.container(border=False, height=350):
-        st.table(apply_html(styler=get_position_table(rankings=rankings), cell_text_color="white"))
+        st.table(align(get_position_table(rankings=rankings)))
