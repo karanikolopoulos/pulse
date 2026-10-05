@@ -37,7 +37,7 @@ SHORTCUTS = {
 }
 
 
-@st.dialog("Keyboard Shortcuts")
+@st.dialog("Keyboard shortcuts")
 def _shortcuts():
     hotkeys.legend()
 

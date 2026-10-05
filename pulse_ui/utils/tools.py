@@ -7,17 +7,10 @@ import streamlit as st
 
 from pandas.io.formats.style import Styler
 
-DELAY = 0.5  # seconds a toast stays readable before a rerun
-
-
-@st.cache_data
-def _read_css(file_path: Path) -> str:
-    with open(file_path) as f:
-        return f"<style>{f.read()}</style>"
-
 
 def load_css(file_path: Path) -> None:
-    st.markdown(_read_css(file_path), unsafe_allow_html=True)
+    """Inject a stylesheet; st.html reads the file on every run, so edits show up on reload."""
+    st.html(file_path)
 
 
 class Placeholder(StrEnum):

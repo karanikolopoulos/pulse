@@ -72,7 +72,7 @@ def results_section(task: str, model: str) -> None:
     )
 
     with agg_tab:
-        df_col, line_col = st.columns((0.3, 0.7))
+        df_col, line_col = st.columns((0.3, 0.6), gap="large")
 
         groups = summary.groups
         agg_df = pd.DataFrame(
@@ -112,7 +112,7 @@ runs = pd.DataFrame(
 )
 
 with st.sidebar:
-    st.write("Results")
+    st.markdown("**Results**")
     model, task = select(runs=runs)
 
 if runs.empty:  # guard
@@ -125,4 +125,4 @@ run = runs[(runs.model == model) & (runs.task == task)]
 
 task_summary(results=run)  # menu container
 results_section(task=task, model=model)  # data container
-st.empty().container(height=100, border=False)  # bottom padding
+st.space("large")  # bottom padding

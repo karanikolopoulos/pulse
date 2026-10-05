@@ -17,4 +17,5 @@ wheels/
 # Data
 /data/results/*
 # Local secrets (the app needs none)
-.streamlit/secrets.toml
+pulse_ui/.streamlit/secrets.toml
+

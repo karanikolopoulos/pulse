@@ -1,7 +1,5 @@
 """Personas and completions tables: a picker with create, view/edit and delete dialogs."""
 
-import time
-
 import pandas as pd
 import streamlit as st
 
@@ -9,7 +7,7 @@ from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from pulse_ui.session import form, pulse
 from pulse.domain.poll import Status, TableKind
-from pulse_ui.utils.tools import DELAY
+from pulse_ui.utils.notify import notify
 
 # the form field holding each kind's selected table
 FIELD: dict[TableKind, str] = {"personas": "selected_persona", "completions": "selected_completions"}
@@ -76,15 +74,14 @@ def _create(kind: TableKind, default_columns: list[str] | None = None, column_pl
 
         status = pulse().add_table(kind=kind, name=name, df=changed.reset_index(drop=True))
         if status == Status.OK:
-            st.toast(f"Created {kind} '{name}'")
-            time.sleep(DELAY)
+            notify(f"Created {kind} '{name}'")
             st.rerun()
         else:
             st.error(f"Failed with status: {status.value}")
 
 
 def _edit(kind: TableKind, name: str) -> None:
-    st.write(name.capitalize())
+    st.markdown(f"**{name.capitalize()}**")
     changed = st.data_editor(pulse().table(kind=kind, name=name), num_rows="dynamic")
 
     if st.button("Save"):
@@ -92,8 +89,7 @@ def _edit(kind: TableKind, name: str) -> None:
             st.error(f"Failed with status: {status.value}")
             st.stop()
 
-        st.toast(f"Updated {kind} '{name}'")
-        time.sleep(DELAY)
+        notify(f"Updated {kind} '{name}'")
         st.rerun()
 
 
@@ -102,8 +98,7 @@ def _delete(kind: TableKind, name: str) -> None:
     if st.button("Confirm"):
         pulse().delete_table(kind=kind, name=name)
         setattr(form, FIELD[kind], None)
-        st.toast(f"Deleted {kind} '{name}'")
-        time.sleep(DELAY)
+        notify(f"Deleted {kind} '{name}'")
         st.rerun()
 
 
@@ -140,32 +135,32 @@ def _validate_new(
         st.stop()
 
 
-@st.dialog("Create personas", width="large")
+@st.dialog("Create persona table", width="large")
 def _create_personas() -> None:
     _create(kind="personas", column_placeholder="demographic, group, persona")
 
 
-@st.dialog("Edit Persona", width="large")
+@st.dialog("Edit persona table", width="large")
 def _edit_personas(name: str) -> None:
     _edit(kind="personas", name=name)
 
 
-@st.dialog("Delete Persona", width="small")
+@st.dialog("Delete persona table", width="small")
 def _delete_personas(name: str) -> None:
     _delete(kind="personas", name=name)
 
 
-@st.dialog("Create completions", width="large")
+@st.dialog("Create completion table", width="large")
 def _create_completions() -> None:
     _create(kind="completions", default_columns=["A", "B", "alias"], column_placeholder="A, B, alias")
 
 
-@st.dialog("Edit Completions File", width="large")
+@st.dialog("Edit completion table", width="large")
 def _edit_completions(name: str) -> None:
     _edit(kind="completions", name=name)
 
 
-@st.dialog("Delete Completions", width="small")
+@st.dialog("Delete completion table", width="small")
 def _delete_completions(name: str) -> None:
     _delete(kind="completions", name=name)
 

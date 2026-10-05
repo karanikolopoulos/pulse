@@ -92,6 +92,10 @@ class Explorer(SessionGroup):
     sample_df: pd.DataFrame | None = None
 
 
+class Notices(SessionGroup):
+    pending: list[str] | None = None  # toasts to show after the next rerun
+
+
 class ResultsView(SessionGroup):
     task: str | None = None
     columns: list[str] | None = None  # completions multiselect
@@ -102,3 +106,4 @@ form = PollForm()
 analysis = Analysis()
 explorer = Explorer()
 results_view = ResultsView()
+notices = Notices()

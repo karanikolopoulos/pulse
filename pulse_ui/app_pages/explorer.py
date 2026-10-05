@@ -67,7 +67,7 @@ def sample(logprobs: int) -> None:
     explorer.sample_df = pulse().next_tokens(poll, prefix=explorer.completion or "", k=logprobs)
 
 
-_, column, _ = st.columns((0.2, 0.2, 0.2))
+column = st.container(horizontal_alignment="center").container(width=480)  # a centred, narrow page
 column.subheader("Explorer")
 
 if failure := pulse().check_connection():
@@ -79,7 +79,7 @@ with column:
     prompt_container()
 
 column.markdown("**Next token**")
-next_container = column.container(border=True, height=165)
+next_container = column.container(border=True)
 sample_df = explorer.sample_df
 if sample_df is not None:
-    next_container.dataframe(sample_df, height=415)
+    next_container.dataframe(sample_df)

@@ -1,7 +1,5 @@
 """The poll being edited: choose a saved poll, edit its prompts, save, run or delete it."""
 
-import time
-
 from typing import Literal
 from dataclasses import replace
 
@@ -10,7 +8,8 @@ import streamlit as st
 from pulse_ui.session import form, pulse
 from pulse.domain.poll import Status, PulseConfig
 from pulse_ui.components import tables
-from pulse_ui.utils.tools import DELAY, Placeholder as ph
+from pulse_ui.utils.tools import Placeholder as ph
+from pulse_ui.utils.notify import notify
 
 
 def draft_poll() -> PulseConfig:
@@ -75,7 +74,6 @@ def save() -> None:
     if not is_update():
         _save_as()
     elif _store(poll=poll, op="updated"):
-        time.sleep(DELAY)
         st.rerun()
 
 
@@ -118,30 +116,28 @@ def _store(poll: PulseConfig, op: Literal["saved", "updated"]) -> bool:
         st.toast(f"Save failed: {status}")
         return False
 
-    st.toast(f"Task {op} successfully.")
+    notify(f"Poll {op}.")
     if op == "saved":
         form.poll_name = poll.name
         form.selected_task = poll.name  # a widget key: settable here because this runs as a callback
     return True
 
 
-@st.dialog("Save Poll", width="small")
+@st.dialog("Save poll", width="small")
 def _save_as() -> None:
     name = st.text_input(label="Poll name", key=form.key("new_poll_name"))
     poll = replace(draft_poll(), name=name)
 
     if st.button("Save", disabled=not name.strip(), on_click=_store, args=(poll, "saved")):
         if form.poll_name == name:  # saved by the callback
-            time.sleep(DELAY)
             st.rerun()
 
 
-@st.dialog("Evaluation", width="large")
+@st.dialog("Run poll", width="large")
 def _run(name: str) -> None:
     with st.spinner(f"Running {name} poll"):
         st.info(form.question)
         results = pulse().run_poll(name)
 
-    st.success(f"Run completed for Poll '{name}' with model '{results.model}'")
-    time.sleep(2)
+    notify(f"Run completed for poll '{name}' with model '{results.model}'")
     st.rerun()
