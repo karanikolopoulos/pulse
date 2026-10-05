@@ -3,7 +3,7 @@ name = "pulse"
 authors = [
   { name = "Christos Karanikolopoulos", email = "chkaranikolopoulos@cs.uoi.gr" },
 ]
-version = "0.1.0"
+version = "0.2.0"
 description = "PULSE - Polling Using LLM-based Sentiment Extraction"
 readme = "README.md"
 requires-python = ">=3.12"
